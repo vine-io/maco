@@ -1,0 +1,28 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: maco
+    description: maco OpenAPI3.0 Document
+    version: 6bff343cb7609b0e94473a6288ae3ca5bf96866b
+paths:
+    /v1/ping:
+        get:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_Ping
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.PingResponse'
+components:
+    schemas:
+        rpc.macopb.PingResponse:
+            type: object
+            properties: {}
+tags:
+    - name: MacoRPC

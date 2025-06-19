@@ -1,0 +1,54 @@
+/*
+Copyright 2025 The maco Authors
+
+This program is offered under a commercial and under the AGPL license.
+For AGPL licensing, see below.
+
+AGPL licensing:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto3";
+
+package errors;
+
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/vine-io/maco/api/errors;errors";
+option java_multiple_files = true;
+option java_package = "io.vine.maco.api.errors";
+option java_outer_classname = "MacoErrors";
+
+enum Code {
+  Ok = 0;
+  Unknown = 1;
+  Internal = 2;
+  BadRequest = 3;
+  Unauthorized = 4;
+  Forbidden = 5;
+  NotFound = 6;
+  Conflict = 7;
+  TooManyRequests = 8;
+  ClientClosed = 9;
+  NotImplemented = 10;
+  Unavailable = 11;
+  GatewayTimeout = 12;
+}
+
+message Error {
+  Code code = 1;
+  string message = 2;
+  string detail = 3;
+  repeated google.protobuf.Any causes = 4;
+}

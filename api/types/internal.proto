@@ -1,0 +1,53 @@
+/*
+Copyright 2025 The maco Authors
+
+This program is offered under a commercial and under the AGPL license.
+For AGPL licensing, see below.
+
+AGPL licensing:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+syntax = "proto3";
+
+package types;
+
+option go_package = "github.com/vine-io/maco/api/types;types";
+option java_multiple_files = true;
+option java_package = "io.vine.maco.api.types";
+option java_outer_classname = "MacoTypes";
+
+message Node {
+  string name = 1;
+  string uid = 2;
+  string ip = 3;
+  string hostname = 4;
+  map<string, string> tags = 5;
+  // operation system
+  string os = 6;
+  // cpu architecture
+  string arch = 7;
+  // the version of node
+  string version = 8;
+  // registry time
+  int64 registry_timestamp = 11;
+  // the timestamp of node connects to server
+  int64 online_timestamp = 12;
+  // the timestamp of node offline
+  int64 offline_timestamp = 13;
+}
+
+enum EventKind {
+  EventUnknown = 0;
+}
