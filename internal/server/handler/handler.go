@@ -26,16 +26,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	gwrt "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/docs"
@@ -50,13 +49,31 @@ type Options struct {
 func RegisterRPC(ctx context.Context, opt *Options) (http.Handler, error) {
 	cfg := opt.Cfg
 
-	macoHl, err := NewMacoHandler(ctx)
+	macoHl, err := newMacoHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("setup maco handler: %w", err)
+	}
+	internalHl, err := newInternalHandler(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("setup internal handler: %w", err)
+	}
+
+	kaep := keepalive.EnforcementPolicy{
+		MinTime:             5 * time.Second,
+		PermitWithoutStream: true,
+	}
+	kasp := keepalive.ServerParameters{
+		MaxConnectionIdle:     15 * time.Second,
+		MaxConnectionAge:      30 * time.Second,
+		MaxConnectionAgeGrace: 5 * time.Second,
+		Time:                  5 * time.Second,
+		Timeout:               3 * time.Second,
 	}
 
 	sopts := []grpc.ServerOption{
 		//grpc.UnaryInterceptor(interceptor),
+		grpc.KeepaliveEnforcementPolicy(kaep),
+		grpc.KeepaliveParams(kasp),
 	}
 	gs := grpc.NewServer(sopts...)
 
@@ -64,6 +81,7 @@ func RegisterRPC(ctx context.Context, opt *Options) (http.Handler, error) {
 	gwmux := gwrt.NewServeMux(muxOpts...)
 
 	pb.RegisterMacoRPCServer(gs, macoHl)
+	pb.RegisterInternalRPCServer(gs, internalHl)
 	if err = pb.RegisterMacoRPCHandlerServer(ctx, gwmux, macoHl); err != nil {
 		return nil, fmt.Errorf("setup maco handler: %w", err)
 	}
@@ -112,26 +130,11 @@ type macoHandler struct {
 	ctx context.Context
 }
 
-func NewMacoHandler(ctx context.Context) (pb.MacoRPCServer, error) {
+func newMacoHandler(ctx context.Context) (pb.MacoRPCServer, error) {
 	handler := &macoHandler{ctx: ctx}
 	return handler, nil
 }
 
 func (h *macoHandler) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
 	return &pb.PingResponse{Message: "OK"}, nil
-}
-
-func (h *macoHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
-	return stream.Send(&pb.DispatchResponse{})
-}
-
-func grpcWithHttp(gh *grpc.Server, hh http.Handler) http.Handler {
-	h2s := &http2.Server{}
-	return h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			gh.ServeHTTP(w, r)
-		} else {
-			hh.ServeHTTP(w, r)
-		}
-	}), h2s)
 }

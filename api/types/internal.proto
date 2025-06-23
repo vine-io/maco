@@ -50,4 +50,14 @@ message Node {
 
 enum EventKind {
   EventUnknown = 0;
+  EventConnect = 1;
+}
+
+message ConnectRequest {
+  Node node = 1;
+}
+
+message ConnectResponse {
+  Node node = 1;
+  bytes pubKey = 2;
 }

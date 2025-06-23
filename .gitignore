@@ -23,6 +23,7 @@ _output/
 
 # generataion code
 *.pb.*.go
+*.pb.go
 openapi.yaml
 
 # Go workspace file

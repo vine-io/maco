@@ -43,6 +43,8 @@ type Config struct {
 	Listen string `json:"listen" toml:"listen"`
 	TLS    *TLS   `json:"tls" toml:"tls"`
 
+	DataRoot string `json:"data_root" toml:"data_root"`
+
 	EnableOpenAPI bool `json:"enable_openapi" toml:"enable_openapi"`
 
 	Log *logutil.LogConfig `json:"log" toml:"log"`
@@ -68,6 +70,16 @@ func (cfg *Config) Init() error {
 	if cfg.Log == nil {
 		lc := logutil.NewLogConfig()
 		cfg.Log = &lc
+	}
+	if cfg.DataRoot == "" {
+		home, _ := os.UserHomeDir()
+		cfg.DataRoot = filepath.Join(home, ".maco")
+		_ = os.MkdirAll(cfg.DataRoot, 0755)
+	} else {
+		_, err := os.Stat(cfg.DataRoot)
+		if err != nil {
+			return fmt.Errorf("read data root directory: %w", err)
+		}
 	}
 	err := cfg.Log.SetupLogging()
 	cfg.Log.SetupGlobalLoggers()

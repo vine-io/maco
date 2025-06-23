@@ -62,7 +62,7 @@ func NewServerCommand(stdout, stderr io.Writer) *cobra.Command {
 	var configPath string
 	homeDir, _ := os.UserHomeDir()
 	if homeDir != "" {
-		configPath = filepath.Join(homeDir, ".config", "maco", "config.toml")
+		configPath = filepath.Join(homeDir, ".maco", "config.toml")
 	}
 
 	flags.StringP("config", "c", configPath, "path to the configuration file")

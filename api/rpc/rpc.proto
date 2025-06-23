@@ -53,8 +53,6 @@ service MacoRPC {
 //      ]
 //    };
   }
-
-  rpc Dispatch(stream DispatchRequest) returns (stream DispatchResponse);
 }
 
 message PingRequest {}
@@ -63,10 +61,16 @@ message PingResponse {
   string message = 1;
 }
 
+service InternalRPC {
+  rpc Dispatch(stream DispatchRequest) returns (stream DispatchResponse);
+}
+
 message DispatchRequest {
   types.EventKind kind = 1;
+  types.ConnectRequest Connect = 2;
 }
 
 message DispatchResponse {
   types.EventKind kind = 1;
+  types.ConnectResponse Connect = 2;
 }
