@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The maco Authors
+Copyright 2023 The olive Authors
 
 This program is offered under a commercial and under the AGPL license.
 For AGPL licensing, see below.
@@ -21,4 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package server
 
-type Config struct{}
+import (
+	"os"
+)
+
+var shutdownSignals = []os.Signal{os.Interrupt}

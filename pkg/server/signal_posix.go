@@ -1,5 +1,8 @@
+//go:build !windows
+// +build !windows
+
 /*
-Copyright 2025 The maco Authors
+Copyright 2023 The olive Authors
 
 This program is offered under a commercial and under the AGPL license.
 For AGPL licensing, see below.
@@ -19,7 +22,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package node
+package server
 
-type MacoNode struct {
-}
+import (
+	"os"
+	"syscall"
+)
+
+var shutdownSignals = []os.Signal{os.Interrupt, syscall.SIGTERM}

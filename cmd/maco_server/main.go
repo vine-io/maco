@@ -21,6 +21,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package main
 
-func main() {
+import (
+	"os"
 
+	"github.com/vine-io/maco/cmd/maco_server/app"
+	"github.com/vine-io/maco/pkg/cli"
+)
+
+func main() {
+	cmd := app.NewServerCommand(os.Stdout, os.Stderr)
+	os.Exit(cli.Run(cmd))
 }

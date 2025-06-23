@@ -18,7 +18,12 @@ coverage.*
 profile.cov
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
+_output/
+
+# generataion code
+*.pb.*.go
+openapi.yaml
 
 # Go workspace file
 go.work
@@ -31,5 +36,3 @@ go.work.sum
 .idea/
 .vscode/
 
-vendor/
-_output/

@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 6bff343cb7609b0e94473a6288ae3ca5bf96866b
+    version: 42ca6389cc1b6ce0404c113a4dea07743e7e6458
 paths:
     /v1/ping:
         get:
@@ -23,6 +23,8 @@ components:
     schemas:
         rpc.macopb.PingResponse:
             type: object
-            properties: {}
+            properties:
+                message:
+                    type: string
 tags:
     - name: MacoRPC

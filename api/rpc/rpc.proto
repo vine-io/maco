@@ -59,7 +59,9 @@ service MacoRPC {
 
 message PingRequest {}
 
-message PingResponse {}
+message PingResponse {
+  string message = 1;
+}
 
 message DispatchRequest {
   types.EventKind kind = 1;

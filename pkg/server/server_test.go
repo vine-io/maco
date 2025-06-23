@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The maco Authors
+Copyright 2023 The olive Authors
 
 This program is offered under a commercial and under the AGPL license.
 For AGPL licensing, see below.
@@ -19,7 +19,30 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package node
+package server
 
-type MacoNode struct {
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+)
+
+func TestGenericServer(t *testing.T) {
+	queue := make([]int, 0)
+
+	logger := zap.NewExample()
+	s1 := NewEmbedServer(logger)
+	s1.Destroy(func() {
+		queue = append(queue, 2)
+	})
+	s1.GoAttach(func() {
+		queue = append(queue, 1)
+	})
+	_ = s1.Shutdown(context.Background())
+
+	if !assert.Equal(t, queue, []int{1, 2}) {
+		return
+	}
 }

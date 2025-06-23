@@ -29,7 +29,7 @@ var (
 	BuildDate = ""
 )
 
-func Version() string {
+func ReleaseVersion() string {
 	var version string
 
 	if GitTag != "" {
