@@ -19,36 +19,38 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-syntax = "proto3";
+package pemutil
 
-package types;
+import (
+	"testing"
 
-option go_package = "github.com/vine-io/maco/api/types;types";
-option java_multiple_files = true;
-option java_package = "io.vine.maco.api.types";
-option java_outer_classname = "MacoTypes";
+	"github.com/stretchr/testify/assert"
+)
 
-message Node {
-  string name = 1;
-  string uid = 2;
-  string ip = 3;
-  string hostname = 4;
-  map<string, string> tags = 5;
-  // operation system
-  string os = 6;
-  // cpu architecture
-  string arch = 7;
-  // the version of node
-  string version = 8;
-  // registry time
-  int64 registry_timestamp = 11;
-  // the timestamp of node connects to server
-  int64 online_timestamp = 12;
-  // the timestamp of node offline
-  int64 offline_timestamp = 13;
+func TestRSA(t *testing.T) {
+	_, _, err := GenerateRSA(1, "")
+	if !assert.Error(t, err) {
+		t.Fatal("expected error")
+	}
+
+	priKey, pubKey, err := GenerateRSA(2048, "MACO")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, len(priKey) != 0)
+	assert.True(t, len(pubKey) != 0)
+
+	source := "test info"
+	encodeText, err := EncodeByRSA([]byte(source), pubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	target, err := DecodeByRSA(encodeText, priKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, source, string(target))
 }
-
-enum EventKind {
-  EventUnknown = 0;
-}
-

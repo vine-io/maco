@@ -29,7 +29,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 
+	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/vine-io/maco/internal/server/config"
@@ -47,14 +49,28 @@ type MacoServer struct {
 	cfg *config.Config
 
 	serve *http.Server
+	db    *badger.DB
 }
 
 func NewMacoServer(cfg *config.Config) (*MacoServer, error) {
+	lg := cfg.Logger()
 	es := genericserver.NewEmbedServer(cfg.Logger())
+
+	dir := filepath.Join(cfg.DataRoot, "store")
+	zap.L().Debug("open embed database", zap.String("dir", dir))
+
+	opt := badger.DefaultOptions(dir).
+		WithLogger(lg)
+	db, err := badger.Open(opt)
+	if err != nil {
+		return nil, fmt.Errorf("open internal database: %w", err)
+	}
+
 	ms := &MacoServer{
 		IEmbedServer: es,
 
 		cfg: cfg,
+		db:  db,
 	}
 	return ms, nil
 }
@@ -88,7 +104,11 @@ func (ms *MacoServer) stop(ctx context.Context) error {
 	return nil
 }
 
-func (ms *MacoServer) destroy() {}
+func (ms *MacoServer) destroy() {
+	if err := ms.db.Close(); err != nil {
+		zap.L().Error("close database", zap.Error(err))
+	}
+}
 
 func (ms *MacoServer) start() error { return nil }
 

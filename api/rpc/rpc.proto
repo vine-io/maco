@@ -62,15 +62,27 @@ message PingResponse {
 }
 
 service InternalRPC {
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
   rpc Dispatch(stream DispatchRequest) returns (stream DispatchResponse);
 }
 
+message ConnectRequest {
+  types.Node node = 1;
+  bytes nodePublicKey = 2;
+}
+
+message ConnectResponse {
+  types.Node node = 1;
+  bytes serverPublicKey = 2;
+}
+
+
 message DispatchRequest {
   types.EventKind kind = 1;
-  types.ConnectRequest Connect = 2;
+  string body = 2;
 }
 
 message DispatchResponse {
   types.EventKind kind = 1;
-  types.ConnectResponse Connect = 2;
+  string body = 3;
 }

@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dgraph-io/badger/v4"
 	"github.com/gorilla/mux"
 	gwrt "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -44,6 +45,7 @@ import (
 type Options struct {
 	Listener net.Listener
 	Cfg      *config.Config
+	DB       *badger.DB
 }
 
 func RegisterRPC(ctx context.Context, opt *Options) (http.Handler, error) {
