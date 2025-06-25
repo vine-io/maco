@@ -29,16 +29,21 @@ import (
 	"fmt"
 )
 
+type RsaPair struct {
+	Private []byte
+	Public  []byte
+}
+
 // GenerateRSA generates rsa key pair
-func GenerateRSA(bits int, logo string) ([]byte, []byte, error) {
+func GenerateRSA(bits int, logo string) (*RsaPair, error) {
 	if bits%2048 != 0 {
-		return nil, nil, fmt.Errorf("bits must be a multiple of 2048")
+		return nil, fmt.Errorf("bits must be a multiple of 2048")
 	}
 
 	// generate rsa key
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
-		return nil, nil, fmt.Errorf("generate rsa key: %w", err)
+		return nil, fmt.Errorf("generate rsa key: %w", err)
 	}
 
 	// import private key
@@ -55,14 +60,19 @@ func GenerateRSA(bits int, logo string) ([]byte, []byte, error) {
 
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("marshal public key: %w", err)
+		return nil, fmt.Errorf("marshal public key: %w", err)
 	}
 	publicPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: publicKeyBytes,
 	})
 
-	return privatePEM, publicPEM, nil
+	pair := &RsaPair{
+		Private: privatePEM,
+		Public:  publicPEM,
+	}
+
+	return pair, nil
 }
 
 func EncodeByRSA(text, publicKey []byte) ([]byte, error) {

@@ -48,8 +48,6 @@ func NewServerCommand(stdout, stderr io.Writer) *cobra.Command {
 			cfg, _ := cmd.Flags().GetString("config")
 			return runServer(ctx, cfg)
 		},
-		SilenceErrors: true,
-		SilenceUsage:  true,
 	}
 
 	app.SetOut(stdout)
@@ -84,7 +82,7 @@ func runServer(ctx context.Context, configPath string) error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	if err := cfg.Init(); err != nil {
+	if err = cfg.Init(); err != nil {
 		return fmt.Errorf("init config: %w", err)
 	}
 

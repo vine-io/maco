@@ -19,7 +19,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package handler
+package server
 
 import (
 	"context"
@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gorilla/mux"
 	gwrt "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -40,16 +39,17 @@ import (
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/docs"
 	"github.com/vine-io/maco/internal/server/config"
+	"github.com/vine-io/maco/pkg/dbutil"
 )
 
-type Options struct {
-	Listener net.Listener
-	Cfg      *config.Config
-	DB       *badger.DB
+type options struct {
+	listener net.Listener
+	cfg      *config.Config
+	db       *dbutil.DB
 }
 
-func RegisterRPC(ctx context.Context, opt *Options) (http.Handler, error) {
-	cfg := opt.Cfg
+func RegisterRPC(ctx context.Context, opt *options) (http.Handler, error) {
+	cfg := opt.cfg
 
 	macoHl, err := newMacoHandler(ctx)
 	if err != nil {

@@ -25,10 +25,10 @@ import (
 	"os"
 
 	"github.com/vine-io/maco/cmd/maco_server/app"
-	"github.com/vine-io/maco/pkg/cli"
+	"github.com/vine-io/maco/pkg/cliutil"
 )
 
 func main() {
 	cmd := app.NewServerCommand(os.Stdout, os.Stderr)
-	os.Exit(cli.Run(cmd))
+	os.Exit(cliutil.Run(cmd))
 }

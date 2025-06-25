@@ -40,6 +40,8 @@ message Node {
   string arch = 7;
   // the version of node
   string version = 8;
+  // the state of node, etc unaccepted, accepted, denied, rejected
+  string state = 9;
   // registry time
   int64 registry_timestamp = 11;
   // the timestamp of node connects to server

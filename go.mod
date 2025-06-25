@@ -5,9 +5,10 @@ go 1.24
 require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/dgraph-io/badger/v4 v4.7.0
+	github.com/emirpasic/gods v1.18.1
 	github.com/google/gnostic v0.7.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6

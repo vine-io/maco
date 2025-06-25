@@ -28,26 +28,26 @@ import (
 )
 
 func TestRSA(t *testing.T) {
-	_, _, err := GenerateRSA(1, "")
+	_, err := GenerateRSA(1, "")
 	if !assert.Error(t, err) {
 		t.Fatal("expected error")
 	}
 
-	priKey, pubKey, err := GenerateRSA(2048, "MACO")
+	pair, err := GenerateRSA(2048, "MACO")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.True(t, len(priKey) != 0)
-	assert.True(t, len(pubKey) != 0)
+	assert.True(t, len(pair.Private) != 0)
+	assert.True(t, len(pair.Public) != 0)
 
 	source := "test info"
-	encodeText, err := EncodeByRSA([]byte(source), pubKey)
+	encodeText, err := EncodeByRSA([]byte(source), pair.Public)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	target, err := DecodeByRSA(encodeText, priKey)
+	target, err := DecodeByRSA(encodeText, pair.Private)
 	if err != nil {
 		t.Fatal(err)
 	}

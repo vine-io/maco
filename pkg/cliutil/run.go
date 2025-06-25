@@ -19,17 +19,16 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cli
+package cliutil
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	cliflag "github.com/vine-io/maco/pkg/cli/flags"
+	cliflag "github.com/vine-io/maco/pkg/cliutil/flags"
 )
 
 // Run provides the common boilerplate code around executing a cobra command.
@@ -47,7 +46,7 @@ func Run(cmd *cobra.Command) int {
 		if !logsInitialized {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		} else {
-			zap.S().Error("command failed", slog.String("err", err.Error()))
+			zap.S().Error("command failed", zap.String("err", err.Error()))
 		}
 		return 1
 	}

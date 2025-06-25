@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"go.uber.org/zap"
@@ -40,20 +41,18 @@ var (
 )
 
 type Config struct {
-	Listen string `json:"listen" toml:"listen"`
-	TLS    *TLS   `json:"tls" toml:"tls"`
-
-	DataRoot string `json:"data_root" toml:"data_root"`
-
-	EnableOpenAPI bool `json:"enable_openapi" toml:"enable_openapi"`
-
-	Log *logutil.LogConfig `json:"log" toml:"log"`
-}
-
-type TLS struct {
+	Listen   string `json:"listen" toml:"listen"`
 	CertFile string `json:"cert-file" toml:"cert-file"`
 	KeyFile  string `json:"key-file" toml:"key-file"`
 	CaFile   string `json:"ca-file" toml:"ca-file"`
+
+	EnableOpenAPI bool `json:"enable_openapi" toml:"enable_openapi"`
+
+	DataRoot string `json:"data_root" toml:"data_root"`
+
+	AutoAccept bool `json:"auto_accept" toml:"auto_accept"`
+
+	Log *logutil.LogConfig `json:"log" toml:"log"`
 }
 
 func NewConfig() *Config {
@@ -71,6 +70,12 @@ func (cfg *Config) Init() error {
 		lc := logutil.NewLogConfig()
 		cfg.Log = &lc
 	}
+	err := cfg.Log.SetupLogging()
+	cfg.Log.SetupGlobalLoggers()
+	if err != nil {
+		return fmt.Errorf("init logger: %w", err)
+	}
+
 	if cfg.DataRoot == "" {
 		home, _ := os.UserHomeDir()
 		cfg.DataRoot = filepath.Join(home, ".maco")
@@ -78,13 +83,18 @@ func (cfg *Config) Init() error {
 	} else {
 		_, err := os.Stat(cfg.DataRoot)
 		if err != nil {
-			return fmt.Errorf("read data root directory: %w", err)
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("read data root directory: %w", err)
+			}
+			_ = os.MkdirAll(cfg.DataRoot, 0755)
 		}
-	}
-	err := cfg.Log.SetupLogging()
-	cfg.Log.SetupGlobalLoggers()
-	if err != nil {
-		return fmt.Errorf("init logger: %w", err)
+		if strings.HasPrefix(cfg.DataRoot, "~") || strings.HasPrefix(cfg.DataRoot, "./") {
+			abs, err := filepath.Abs(cfg.DataRoot)
+			if err != nil {
+				return fmt.Errorf("get data-root abs path: %w", err)
+			}
+			cfg.DataRoot = abs
+		}
 	}
 	return nil
 }
@@ -117,7 +127,11 @@ func (cfg *Config) Save(filename string) error {
 	ext := filepath.Ext(filename)
 	switch ext {
 	case ".toml":
-		err = toml.NewEncoder(bytes.NewBuffer(data)).Encode(cfg)
+		buf := bytes.NewBufferString("")
+		err = toml.NewEncoder(buf).Encode(cfg)
+		if err == nil {
+			data = buf.Bytes()
+		}
 	case ".yaml", ".yml":
 		data, err = yaml.Marshal(cfg)
 	case ".json":

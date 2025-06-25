@@ -19,29 +19,23 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package handler
+package fsutil
 
 import (
-	"context"
-
-	"google.golang.org/grpc"
-
-	pb "github.com/vine-io/maco/api/rpc"
-	"github.com/vine-io/maco/internal/server/config"
+	"os"
 )
 
-type internalHandler struct {
-	pb.UnimplementedInternalRPCServer
-
-	ctx context.Context
-	cfg *config.Config
-}
-
-func newInternalHandler(ctx context.Context, cfg *config.Config) (pb.InternalRPCServer, error) {
-
-	return &internalHandler{ctx: ctx}, nil
-}
-
-func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
-	return stream.Send(&pb.DispatchResponse{})
+// LoadDir checks specified paths and creates all paths if it does not exist
+func LoadDir(path string) error {
+	_, err := os.Stat(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		err = os.MkdirAll(path, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -79,10 +79,10 @@ message ConnectResponse {
 
 message DispatchRequest {
   types.EventKind kind = 1;
-  string body = 2;
+  bytes body = 2;
 }
 
 message DispatchResponse {
   types.EventKind kind = 1;
-  string body = 3;
+  bytes body = 3;
 }

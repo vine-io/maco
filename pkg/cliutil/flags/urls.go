@@ -28,7 +28,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/vine-io/maco/pkg/cli/flags/types"
+	"github.com/vine-io/maco/pkg/cliutil/flags/types"
 )
 
 // URLsValue wraps "types.URLs".

@@ -31,11 +31,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/vine-io/maco/internal/server/config"
-	"github.com/vine-io/maco/internal/server/handler"
+	"github.com/vine-io/maco/pkg/dbutil"
 	genericserver "github.com/vine-io/maco/pkg/server"
 )
 
@@ -49,7 +48,7 @@ type MacoServer struct {
 	cfg *config.Config
 
 	serve *http.Server
-	db    *badger.DB
+	db    *dbutil.DB
 }
 
 func NewMacoServer(cfg *config.Config) (*MacoServer, error) {
@@ -57,13 +56,15 @@ func NewMacoServer(cfg *config.Config) (*MacoServer, error) {
 	es := genericserver.NewEmbedServer(cfg.Logger())
 
 	dir := filepath.Join(cfg.DataRoot, "store")
-	zap.L().Debug("open embed database", zap.String("dir", dir))
+	zap.L().Info("open embed database", zap.String("dir", dir))
 
-	opt := badger.DefaultOptions(dir).
-		WithLogger(lg)
-	db, err := badger.Open(opt)
+	opt := &dbutil.Options{
+		Dir:    dir,
+		Logger: lg,
+	}
+	db, err := dbutil.OpenDB(opt)
 	if err != nil {
-		return nil, fmt.Errorf("open internal database: %w", err)
+		return nil, fmt.Errorf("open database: %w", err)
 	}
 
 	ms := &MacoServer{
@@ -124,11 +125,12 @@ func (ms *MacoServer) startServer(ctx context.Context) error {
 		zap.String("scheme", scheme),
 		zap.String("addr", ts.Addr().String()))
 
-	opts := &handler.Options{
-		Listener: ts,
-		Cfg:      cfg,
+	opts := &options{
+		listener: ts,
+		cfg:      cfg,
+		db:       ms.db,
 	}
-	hdlr, err := handler.RegisterRPC(ctx, opts)
+	hdlr, err := RegisterRPC(ctx, opts)
 	ms.serve = &http.Server{
 		Handler:        hdlr,
 		MaxHeaderBytes: DefaultHeaderBytes,
@@ -147,9 +149,13 @@ func (ms *MacoServer) createListener() (string, net.Listener, error) {
 	zap.L().Debug("listen on " + listen)
 
 	var tlsConfig *tls.Config
-	var err error
-	if ct := cfg.TLS; ct != nil {
-		cert, err := tls.LoadX509KeyPair("server.pem", "server.key")
+	isHttps := false
+	if cfg.CertFile != "" && cfg.KeyFile != "" {
+		isHttps = true
+	}
+
+	if isHttps {
+		cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 		if err != nil {
 			return "", nil, fmt.Errorf("load certificate pair: %w", err)
 		}
@@ -164,8 +170,8 @@ func (ms *MacoServer) createListener() (string, net.Listener, error) {
 			},
 		}
 
-		if ct.CaFile != "" {
-			caCert, err := os.ReadFile(ct.CaFile)
+		if cfg.CaFile != "" {
+			caCert, err := os.ReadFile(cfg.CaFile)
 			if err != nil {
 				return "", nil, fmt.Errorf("load certificate CA: %w", err)
 			}
@@ -177,6 +183,7 @@ func (ms *MacoServer) createListener() (string, net.Listener, error) {
 
 	var scheme string
 	var ln net.Listener
+	var err error
 	if tlsConfig != nil {
 		scheme = "https"
 		ln, err = tls.Listen("tcp", listen, tlsConfig)

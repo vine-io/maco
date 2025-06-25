@@ -20,3 +20,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 package config
+
+import (
+	"testing"
+)
+
+func TestConfig(t *testing.T) {
+	cfg := NewConfig()
+
+	err := cfg.Save("/tmp/server_config.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
