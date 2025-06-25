@@ -31,22 +31,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/vine-io/maco/internal/server"
-	"github.com/vine-io/maco/internal/server/config"
+	"github.com/vine-io/maco/internal/master"
+	"github.com/vine-io/maco/internal/master/config"
 	genericserver "github.com/vine-io/maco/pkg/server"
 	version "github.com/vine-io/maco/pkg/version"
 )
 
-func NewServerCommand(stdout, stderr io.Writer) *cobra.Command {
+func NewMasterCommand(stdout, stderr io.Writer) *cobra.Command {
 	app := &cobra.Command{
-		Use:     "maco-server",
+		Use:     "maco-master",
 		Short:   "the server component of maco system",
 		Version: version.ReleaseVersion(),
 		PreRunE: func(cmd *cobra.Command, args []string) error { return nil },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			cfg, _ := cmd.Flags().GetString("config")
-			return runServer(ctx, cfg)
+			return runMaster(ctx, cfg)
 		},
 	}
 
@@ -77,7 +77,7 @@ func getVersionTemplate() string {
 	return tpl
 }
 
-func runServer(ctx context.Context, configPath string) error {
+func runMaster(ctx context.Context, configPath string) error {
 	cfg, err := config.FromPath(configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -86,9 +86,9 @@ func runServer(ctx context.Context, configPath string) error {
 		return fmt.Errorf("init config: %w", err)
 	}
 
-	maco, err := server.NewMacoServer(cfg)
+	maco, err := master.NewMaster(cfg)
 	if err != nil {
-		return fmt.Errorf("create maco server: %w", err)
+		return fmt.Errorf("create maco-master server: %w", err)
 	}
 
 	ctx = genericserver.SetupSignalContext(ctx)
