@@ -28,7 +28,7 @@ option java_multiple_files = true;
 option java_package = "io.vine.maco.api.types";
 option java_outer_classname = "MacoTypes";
 
-message Node {
+message Minion {
   string name = 1;
   string uid = 2;
   string ip = 3;

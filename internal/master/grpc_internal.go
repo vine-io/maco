@@ -19,16 +19,34 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package main
+package master
 
 import (
-	"os"
+	"context"
 
-	"github.com/vine-io/maco/cmd/maco_server/app"
-	"github.com/vine-io/maco/pkg/cliutil"
+	"google.golang.org/grpc"
+
+	pb "github.com/vine-io/maco/api/rpc"
+	"github.com/vine-io/maco/internal/master/config"
 )
 
-func main() {
-	cmd := app.NewServerCommand(os.Stdout, os.Stderr)
-	os.Exit(cliutil.Run(cmd))
+type internalHandler struct {
+	pb.UnimplementedInternalRPCServer
+
+	ctx context.Context
+	cfg *config.Config
+}
+
+func newInternalHandler(ctx context.Context, cfg *config.Config) (pb.InternalRPCServer, error) {
+
+	handler := &internalHandler{
+		ctx: ctx,
+		cfg: cfg,
+	}
+
+	return handler, nil
+}
+
+func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
+	return stream.Send(&pb.DispatchResponse{})
 }

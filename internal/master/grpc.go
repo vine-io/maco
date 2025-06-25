@@ -19,7 +19,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package server
+package master
 
 import (
 	"context"
@@ -38,7 +38,7 @@ import (
 
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/docs"
-	"github.com/vine-io/maco/internal/server/config"
+	"github.com/vine-io/maco/internal/master/config"
 	"github.com/vine-io/maco/pkg/dbutil"
 )
 

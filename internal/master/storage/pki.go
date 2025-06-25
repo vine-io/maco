@@ -27,9 +27,9 @@ import (
 	"path/filepath"
 )
 
-func (s *Storage) walkPkiNodes(state string) ([]string, error) {
+func (s *Storage) walkPkiMinions(state string) ([]string, error) {
 	switch state {
-	case nodePath, nodePrePath, nodeAutoPath, nodeDeniedPath, nodeRejectPath:
+	case minionPath, minionPrePath, minionAutoPath, minionDeniedPath, minionRejectPath:
 	default:
 		return nil, fmt.Errorf("invalid state: %s", state)
 	}
@@ -38,55 +38,55 @@ func (s *Storage) walkPkiNodes(state string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodes := make([]string, 0, len(files))
+	minions := make([]string, 0, len(files))
 	for i, entry := range files {
-		nodes[i] = entry.Name()
+		minions[i] = entry.Name()
 	}
-	return nodes, nil
+	return minions, nil
 }
 
-func (s *Storage) addNode(id string, pubKey []byte) error {
-	nodeId := filepath.Join(s.dir, "pki", nodePrePath, id)
-	return os.WriteFile(nodeId, pubKey, 0600)
+func (s *Storage) addMinion(id string, pubKey []byte) error {
+	minionId := filepath.Join(s.dir, "pki", minionPrePath, id)
+	return os.WriteFile(minionId, pubKey, 0600)
 }
 
-func (s *Storage) acceptNode(id string) error {
-	preId := filepath.Join(s.dir, "pki", nodePrePath, id)
-	nodeId := filepath.Join(s.dir, "pki", nodePath, id)
+func (s *Storage) acceptMinion(id string) error {
+	preId := filepath.Join(s.dir, "pki", minionPrePath, id)
+	minionId := filepath.Join(s.dir, "pki", minionPath, id)
 
 	stat, _ := os.Stat(preId)
 	if stat != nil {
-		return os.Rename(preId, nodeId)
+		return os.Rename(preId, minionId)
 	}
 
-	rejectId := filepath.Join(s.dir, "pki", nodeRejectPath, id)
+	rejectId := filepath.Join(s.dir, "pki", minionRejectPath, id)
 	stat, _ = os.Stat(rejectId)
 	if stat != nil {
-		return os.Rename(rejectId, nodeId)
+		return os.Rename(rejectId, minionId)
 	}
 	return ErrNotFound
 }
 
-func (s *Storage) rejectNode(id string) error {
-	preId := filepath.Join(s.dir, "pki", nodePrePath, id)
-	nodeId := filepath.Join(s.dir, "pki", nodeRejectPath, id)
+func (s *Storage) rejectMinion(id string) error {
+	preId := filepath.Join(s.dir, "pki", minionPrePath, id)
+	minionId := filepath.Join(s.dir, "pki", minionRejectPath, id)
 
 	stat, _ := os.Stat(preId)
 	if stat != nil {
-		return os.Rename(preId, nodeId)
+		return os.Rename(preId, minionId)
 	}
 
-	acceptId := filepath.Join(s.dir, "pki", nodePath, id)
+	acceptId := filepath.Join(s.dir, "pki", minionPath, id)
 	stat, _ = os.Stat(acceptId)
 	if stat != nil {
-		return os.Rename(acceptId, nodeId)
+		return os.Rename(acceptId, minionId)
 	}
 
 	return ErrNotFound
 }
 
-func (s *Storage) deleteNode(id string) error {
-	preId := filepath.Join(s.dir, "pki", nodePrePath, id)
+func (s *Storage) deleteMinion(id string) error {
+	preId := filepath.Join(s.dir, "pki", minionPrePath, id)
 	exists, err := removeFile(preId)
 	if err != nil {
 		return err
@@ -95,8 +95,8 @@ func (s *Storage) deleteNode(id string) error {
 		return nil
 	}
 
-	nodeId := filepath.Join(s.dir, "pki", nodePath, id)
-	exists, err = removeFile(nodeId)
+	minionId := filepath.Join(s.dir, "pki", minionPath, id)
+	exists, err = removeFile(minionId)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (s *Storage) deleteNode(id string) error {
 		return nil
 	}
 
-	rejectId := filepath.Join(s.dir, "pki", nodeRejectPath, id)
+	rejectId := filepath.Join(s.dir, "pki", minionRejectPath, id)
 	exists, err = removeFile(rejectId)
 	if err != nil {
 		return err

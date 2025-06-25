@@ -41,20 +41,20 @@ import (
 )
 
 const (
-	DefaultPrefix  = "_maco"
-	nodePath       = "nodes"
-	nodeAutoPath   = "nodes_autosign"
-	nodePrePath    = "nodes_pre"
-	nodeDeniedPath = "nodes_denied"
-	nodeRejectPath = "nodes_rejected"
+	DefaultPrefix    = "_maco"
+	minionPath       = "minions"
+	minionAutoPath   = "minions_autosign"
+	minionPrePath    = "minions_pre"
+	minionDeniedPath = "minions_denied"
+	minionRejectPath = "minions_rejected"
 )
 
 var (
 	ErrNotFound = errors.New("not found")
 )
 
-type NodeInfo struct {
-	*types.Node
+type MinionInfo struct {
+	*types.Minion
 }
 
 type Options struct {
@@ -82,19 +82,19 @@ type Storage struct {
 	pair *pemutil.RsaPair
 
 	pmu sync.RWMutex
-	// unaccepted saves all unregister nodes
+	// unaccepted saves all unregister minions
 	unaccepted *treemap.Map
 
 	amu sync.RWMutex
-	// accepted saves all accepted nodes
+	// accepted saves all accepted minions
 	accepted *treemap.Map
 
 	dmu sync.RWMutex
-	// denied saves all denied nodes
+	// denied saves all denied minions
 	denied *hashmap.Map
 
 	rmu sync.RWMutex
-	// rejected saves all rejected nodes
+	// rejected saves all rejected minions
 	rejected *hashmap.Map
 }
 
@@ -113,7 +113,7 @@ func Open(opt *Options) (*Storage, error) {
 	lg.Info("read pki pairs")
 
 	exists := true
-	pem := filepath.Join(dir, "server.pem")
+	pem := filepath.Join(dir, "master.pem")
 	pemBytes, err := os.ReadFile(pem)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -122,7 +122,7 @@ func Open(opt *Options) (*Storage, error) {
 		exists = false
 	}
 
-	pub := filepath.Join(dir, "server.pub")
+	pub := filepath.Join(dir, "master.pub")
 	pubBytes, err := os.ReadFile(pub)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -156,19 +156,19 @@ func Open(opt *Options) (*Storage, error) {
 		}
 	}
 
-	if err = fsutil.LoadDir(filepath.Join(dir, nodePath)); err != nil {
+	if err = fsutil.LoadDir(filepath.Join(dir, minionPath)); err != nil {
 		return nil, err
 	}
-	if err = fsutil.LoadDir(filepath.Join(dir, nodeAutoPath)); err != nil {
+	if err = fsutil.LoadDir(filepath.Join(dir, minionAutoPath)); err != nil {
 		return nil, err
 	}
-	if err = fsutil.LoadDir(filepath.Join(dir, nodeDeniedPath)); err != nil {
+	if err = fsutil.LoadDir(filepath.Join(dir, minionDeniedPath)); err != nil {
 		return nil, err
 	}
-	if err = fsutil.LoadDir(filepath.Join(dir, nodePrePath)); err != nil {
+	if err = fsutil.LoadDir(filepath.Join(dir, minionPrePath)); err != nil {
 		return nil, err
 	}
-	if err = fsutil.LoadDir(filepath.Join(dir, nodeRejectPath)); err != nil {
+	if err = fsutil.LoadDir(filepath.Join(dir, minionRejectPath)); err != nil {
 		return nil, err
 	}
 
@@ -193,30 +193,30 @@ func (s *Storage) ServerRsa() *pemutil.RsaPair {
 	return s.pair
 }
 
-func (s *Storage) AddNode(node *types.Node, pubKey []byte) error {
-	id := node.Name
-	if err := s.addNode(id, pubKey); err != nil {
+func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte) error {
+	id := minion.Name
+	if err := s.addMinion(id, pubKey); err != nil {
 		return err
 	}
 
-	return s.UpdateNode(node)
+	return s.UpdateMinion(minion)
 }
 
-func (s *Storage) UpdateNode(node *types.Node) error {
-	key := filepath.Join(s.Prefix, nodePath, node.Name)
-	value, err := proto.Marshal(node)
+func (s *Storage) UpdateMinion(minion *types.Minion) error {
+	key := filepath.Join(s.Prefix, minionPath, minion.Name)
+	value, err := proto.Marshal(minion)
 	if err != nil {
-		return fmt.Errorf("marshal node: %v", err)
+		return fmt.Errorf("marshal minion: %v", err)
 	}
 
 	if err = s.db.Set([]byte(key), value); err != nil {
-		return fmt.Errorf("save node: %v", err)
+		return fmt.Errorf("save minion: %v", err)
 	}
 	return nil
 }
 
-func (s *Storage) GetNode(name string) (*NodeInfo, error) {
-	key := filepath.Join(s.Prefix, nodePath, name)
+func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
+	key := filepath.Join(s.Prefix, minionPath, name)
 
 	data, err := s.db.Get([]byte(key))
 	if err != nil {
@@ -226,31 +226,31 @@ func (s *Storage) GetNode(name string) (*NodeInfo, error) {
 		return nil, err
 	}
 
-	var node types.Node
-	if err = proto.Unmarshal(data, &node); err != nil {
+	var minion types.Minion
+	if err = proto.Unmarshal(data, &minion); err != nil {
 		return nil, err
 	}
 
-	info := &NodeInfo{
-		Node: &node,
+	info := &MinionInfo{
+		Minion: &minion,
 	}
 	return info, nil
 }
 
-func (s *Storage) AcceptNode(name string, includeRejected bool) error {
-	return s.acceptNode(name)
+func (s *Storage) AcceptMinion(name string, includeRejected bool) error {
+	return s.acceptMinion(name)
 }
 
-func (s *Storage) RejectNode(name string, includeAccepted bool) error {
-	return s.rejectNode(name)
+func (s *Storage) RejectMinion(name string, includeAccepted bool) error {
+	return s.rejectMinion(name)
 }
 
-func (s *Storage) DeleteNode(name string) error {
-	if err := s.deleteNode(name); err != nil {
+func (s *Storage) DeleteMinion(name string) error {
+	if err := s.deleteMinion(name); err != nil {
 		return err
 	}
 
-	key := filepath.Join(s.Prefix, nodePath, name)
+	key := filepath.Join(s.Prefix, minionPath, name)
 	err := s.db.Delete([]byte(key))
 	if err != nil {
 		return err

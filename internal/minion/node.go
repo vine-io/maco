@@ -19,24 +19,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package server
+package minion
 
-import (
-	"net/http"
-	"strings"
-
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-	"google.golang.org/grpc"
-)
-
-func grpcWithHttp(gh *grpc.Server, hh http.Handler) http.Handler {
-	h2s := &http2.Server{}
-	return h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			gh.ServeHTTP(w, r)
-		} else {
-			hh.ServeHTTP(w, r)
-		}
-	}), h2s)
+type MacoNode struct {
 }

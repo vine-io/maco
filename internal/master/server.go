@@ -19,7 +19,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package server
+package master
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vine-io/maco/internal/server/config"
+	"github.com/vine-io/maco/internal/master/config"
 	"github.com/vine-io/maco/pkg/dbutil"
 	genericserver "github.com/vine-io/maco/pkg/server"
 )
@@ -42,7 +42,7 @@ var (
 	DefaultHeaderBytes = 1024 * 1024 * 50
 )
 
-type MacoServer struct {
+type Master struct {
 	genericserver.IEmbedServer
 
 	cfg *config.Config
@@ -51,7 +51,7 @@ type MacoServer struct {
 	db    *dbutil.DB
 }
 
-func NewMacoServer(cfg *config.Config) (*MacoServer, error) {
+func NewMaster(cfg *config.Config) (*Master, error) {
 	lg := cfg.Logger()
 	es := genericserver.NewEmbedServer(cfg.Logger())
 
@@ -67,7 +67,7 @@ func NewMacoServer(cfg *config.Config) (*MacoServer, error) {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	ms := &MacoServer{
+	ms := &Master{
 		IEmbedServer: es,
 
 		cfg: cfg,
@@ -76,7 +76,7 @@ func NewMacoServer(cfg *config.Config) (*MacoServer, error) {
 	return ms, nil
 }
 
-func (ms *MacoServer) Start(ctx context.Context) error {
+func (ms *Master) Start(ctx context.Context) error {
 
 	zap.L().Info("starting maco server")
 	if err := ms.start(); err != nil {
@@ -93,7 +93,7 @@ func (ms *MacoServer) Start(ctx context.Context) error {
 	return ms.stop(ctx)
 }
 
-func (ms *MacoServer) stop(ctx context.Context) error {
+func (ms *Master) stop(ctx context.Context) error {
 	if err := ms.IEmbedServer.Shutdown(ctx); err != nil {
 		return err
 	}
@@ -105,15 +105,15 @@ func (ms *MacoServer) stop(ctx context.Context) error {
 	return nil
 }
 
-func (ms *MacoServer) destroy() {
+func (ms *Master) destroy() {
 	if err := ms.db.Close(); err != nil {
 		zap.L().Error("close database", zap.Error(err))
 	}
 }
 
-func (ms *MacoServer) start() error { return nil }
+func (ms *Master) start() error { return nil }
 
-func (ms *MacoServer) startServer(ctx context.Context) error {
+func (ms *Master) startServer(ctx context.Context) error {
 	cfg := ms.cfg
 
 	scheme, ts, err := ms.createListener()
@@ -121,7 +121,7 @@ func (ms *MacoServer) startServer(ctx context.Context) error {
 		return err
 	}
 
-	zap.L().Info("maco-server listening",
+	zap.L().Info("maco-master listening",
 		zap.String("scheme", scheme),
 		zap.String("addr", ts.Addr().String()))
 
@@ -143,7 +143,7 @@ func (ms *MacoServer) startServer(ctx context.Context) error {
 	return nil
 }
 
-func (ms *MacoServer) createListener() (string, net.Listener, error) {
+func (ms *Master) createListener() (string, net.Listener, error) {
 	cfg := ms.cfg
 	listen := cfg.Listen
 	zap.L().Debug("listen on " + listen)

@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/dgraph-io/badger/v4 v4.7.0
 	github.com/emirpasic/gods v1.18.1
+	github.com/golang/protobuf v1.5.4
 	github.com/google/gnostic v0.7.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
