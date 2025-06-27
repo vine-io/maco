@@ -19,34 +19,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package master
+package types
 
-import (
-	"context"
+type MinionState string
 
-	"google.golang.org/grpc"
-
-	pb "github.com/vine-io/maco/api/rpc"
-	"github.com/vine-io/maco/internal/master/config"
+const (
+	Unaccepted MinionState = "unaccepted"
+	Accepted   MinionState = "accepted"
+	AutoSign   MinionState = "auto_sign"
+	Denied     MinionState = "denied"
+	Rejected   MinionState = "rejected"
 )
-
-type internalHandler struct {
-	pb.UnimplementedInternalRPCServer
-
-	ctx context.Context
-	cfg *config.Config
-}
-
-func newInternalHandler(ctx context.Context, cfg *config.Config) (pb.InternalRPCServer, error) {
-
-	handler := &internalHandler{
-		ctx: ctx,
-		cfg: cfg,
-	}
-
-	return handler, nil
-}
-
-func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
-	return stream.Send(&pb.DispatchResponse{})
-}

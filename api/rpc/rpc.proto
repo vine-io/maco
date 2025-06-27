@@ -76,7 +76,6 @@ message ConnectResponse {
   bytes masterPublicKey = 2;
 }
 
-
 message DispatchRequest {
   types.EventKind kind = 1;
   bytes body = 2;

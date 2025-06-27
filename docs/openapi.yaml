@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: c278afa452e36932ba83334702f82a73c15bcbab
+    version: bab68792e1dd5e7e5d82581dc5e4bf65f34ae2bf
 paths:
     /v1/ping:
         get:

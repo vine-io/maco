@@ -33,8 +33,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vine-io/maco/internal/master/config"
-	"github.com/vine-io/maco/pkg/dbutil"
 	genericserver "github.com/vine-io/maco/pkg/server"
 )
 
@@ -45,33 +43,22 @@ var (
 type Master struct {
 	genericserver.IEmbedServer
 
-	cfg *config.Config
+	cfg *Config
 
 	serve *http.Server
-	db    *dbutil.DB
 }
 
-func NewMaster(cfg *config.Config) (*Master, error) {
+func NewMaster(cfg *Config) (*Master, error) {
 	lg := cfg.Logger()
 	es := genericserver.NewEmbedServer(cfg.Logger())
 
 	dir := filepath.Join(cfg.DataRoot, "store")
-	zap.L().Info("open embed database", zap.String("dir", dir))
-
-	opt := &dbutil.Options{
-		Dir:    dir,
-		Logger: lg,
-	}
-	db, err := dbutil.OpenDB(opt)
-	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
-	}
+	lg.Info("open embed database", zap.String("dir", dir))
 
 	ms := &Master{
 		IEmbedServer: es,
 
 		cfg: cfg,
-		db:  db,
 	}
 	return ms, nil
 }
@@ -106,9 +93,6 @@ func (ms *Master) stop(ctx context.Context) error {
 }
 
 func (ms *Master) destroy() {
-	if err := ms.db.Close(); err != nil {
-		zap.L().Error("close database", zap.Error(err))
-	}
 }
 
 func (ms *Master) start() error { return nil }
@@ -128,9 +112,8 @@ func (ms *Master) startServer(ctx context.Context) error {
 	opts := &options{
 		listener: ts,
 		cfg:      cfg,
-		db:       ms.db,
 	}
-	hdlr, err := RegisterRPC(ctx, opts)
+	hdlr, err := registerRPCHandler(ctx, opts)
 	ms.serve = &http.Server{
 		Handler:        hdlr,
 		MaxHeaderBytes: DefaultHeaderBytes,

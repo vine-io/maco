@@ -32,7 +32,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vine-io/maco/internal/master"
-	"github.com/vine-io/maco/internal/master/config"
 	genericserver "github.com/vine-io/maco/pkg/server"
 	version "github.com/vine-io/maco/pkg/version"
 )
@@ -78,7 +77,7 @@ func getVersionTemplate() string {
 }
 
 func runMaster(ctx context.Context, configPath string) error {
-	cfg, err := config.FromPath(configPath)
+	cfg, err := master.FromPath(configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}

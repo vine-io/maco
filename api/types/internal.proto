@@ -28,6 +28,7 @@ option java_multiple_files = true;
 option java_package = "io.vine.maco.api.types";
 option java_outer_classname = "MacoTypes";
 
+// Minion defines the base information of maco-minion
 message Minion {
   string name = 1;
   string uid = 2;
@@ -38,16 +39,19 @@ message Minion {
   string os = 6;
   // cpu architecture
   string arch = 7;
-  // the version of node
+  // the version of minion
   string version = 8;
-  // the state of node, etc unaccepted, accepted, denied, rejected
-  string state = 9;
   // registry time
-  int64 registry_timestamp = 11;
-  // the timestamp of node connects to server
-  int64 online_timestamp = 12;
-  // the timestamp of node offline
-  int64 offline_timestamp = 13;
+  int64 registry_timestamp = 21;
+  // the timestamp of minion connects to server
+  int64 online_timestamp = 22;
+  // the timestamp of minion offline
+  int64 offline_timestamp = 23;
+}
+
+// Grains defines the base
+message Grains {
+
 }
 
 enum EventKind {
