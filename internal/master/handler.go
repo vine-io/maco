@@ -35,25 +35,32 @@ import (
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/vine-io/maco/api/rpc"
+	"github.com/vine-io/maco/api/types"
 	"github.com/vine-io/maco/docs"
 )
 
+type DispatchStream = grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]
+
 type options struct {
-	listener net.Listener
-	cfg      *Config
+	listener  net.Listener
+	cfg       *Config
+	storage   *Storage
+	scheduler *Scheduler
 }
 
 func registerRPCHandler(ctx context.Context, opt *options) (http.Handler, error) {
 	cfg := opt.cfg
 
-	macoHl, err := newMacoHandler(ctx)
+	macoHl, err := newMacoHandler(ctx, opt.storage, opt.scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("setup maco handler: %w", err)
 	}
-	internalHl, err := newInternalHandler(ctx, cfg)
+	internalHl, err := newInternalHandler(ctx, cfg, opt.scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("setup internal handler: %w", err)
 	}
@@ -128,9 +135,12 @@ type macoHandler struct {
 	pb.UnimplementedMacoRPCServer
 
 	ctx context.Context
+
+	storage *Storage
+	sch     *Scheduler
 }
 
-func newMacoHandler(ctx context.Context) (pb.MacoRPCServer, error) {
+func newMacoHandler(ctx context.Context, storage *Storage, sch *Scheduler) (pb.MacoRPCServer, error) {
 	handler := &macoHandler{ctx: ctx}
 	return handler, nil
 }
@@ -144,34 +154,46 @@ type internalHandler struct {
 
 	ctx context.Context
 	cfg *Config
+
+	sch *Scheduler
 }
 
-func newInternalHandler(ctx context.Context, cfg *Config) (pb.InternalRPCServer, error) {
+func newInternalHandler(ctx context.Context, cfg *Config, sch *Scheduler) (pb.InternalRPCServer, error) {
 
 	handler := &internalHandler{
 		ctx: ctx,
 		cfg: cfg,
+		sch: sch,
 	}
 
 	return handler, nil
 }
 
-func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
-	ctx := stream.Context()
-
-	for {
-		select {
-		case <-ctx.Done():
-		default:
-
-		}
-
-		req, err := stream.Recv()
+func (h *internalHandler) Dispatch(stream DispatchStream) error {
+	rsp, err := stream.Recv()
+	if err != nil {
 		if err == io.EOF {
-			break
+			return nil
 		}
-		_ = req
+		return status.Errorf(codes.Unknown, "dispatch stream error: %v", err)
 	}
 
-	return stream.Send(&pb.DispatchResponse{})
+	if rsp.Type != types.EventType_EventConnect {
+		return status.Errorf(codes.InvalidArgument, "missing connect message")
+	}
+	connMsg := rsp.Connect
+	if connMsg == nil {
+		return status.Errorf(codes.InvalidArgument, "missing connect message")
+	}
+
+	p, err := h.sch.addStream(connMsg, stream)
+	if err != nil {
+		return status.Errorf(codes.Internal, "add stream error: %v", err)
+	}
+
+	err = p.start()
+	if err != nil {
+		return status.Errorf(codes.Internal, "start stream error: %v", err)
+	}
+	return nil
 }

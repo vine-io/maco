@@ -90,6 +90,7 @@ func (EventType) EnumDescriptor() ([]byte, []int) {
 	return file_api_types_internal_proto_rawDescGZIP(), []int{0}
 }
 
+// ValueType 数值类型
 type ValueType int32
 
 const (
@@ -97,7 +98,8 @@ const (
 	ValueType_ValueInteger ValueType = 1
 	ValueType_ValueFloat   ValueType = 2
 	ValueType_ValueBoolean ValueType = 3
-	ValueType_ValueObject  ValueType = 4
+	// 复杂类型，通过 json 转化
+	ValueType_ValueObject ValueType = 4
 )
 
 // Enum value maps for ValueType.
@@ -145,12 +147,16 @@ func (ValueType) EnumDescriptor() ([]byte, []int) {
 	return file_api_types_internal_proto_rawDescGZIP(), []int{1}
 }
 
+// ResultType 任务返回类型
 type ResultType int32
 
 const (
-	ResultType_ResultSkip  ResultType = 0
+	// 用户不满足条件
+	ResultType_ResultSkip ResultType = 0
+	// 直接结果错误
 	ResultType_ResultError ResultType = 1
-	ResultType_ResultOk    ResultType = 2
+	// 直接结果正确
+	ResultType_ResultOk ResultType = 2
 )
 
 // Enum value maps for ResultType.
@@ -469,6 +475,239 @@ func (*Grain) Descriptor() ([]byte, []int) {
 	return file_api_types_internal_proto_rawDescGZIP(), []int{1}
 }
 
+// Report Minion 执行结果
+type Report struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*ReportItem          `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Summary       *ReportSummary         `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Report) Reset() {
+	*x = Report{}
+	mi := &file_api_types_internal_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Report) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Report) ProtoMessage() {}
+
+func (x *Report) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Report.ProtoReflect.Descriptor instead.
+func (*Report) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Report) GetItems() []*ReportItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *Report) GetSummary() *ReportSummary {
+	if x != nil {
+		return x.Summary
+	}
+	return nil
+}
+
+type ReportItem struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Minion         string                 `protobuf:"bytes,1,opt,name=minion,proto3" json:"minion,omitempty"`
+	StartTimestamp int64                  `protobuf:"varint,2,opt,name=startTimestamp,proto3" json:"startTimestamp,omitempty"`
+	EndTimestamp   int64                  `protobuf:"varint,3,opt,name=endTimestamp,proto3" json:"endTimestamp,omitempty"`
+	Result         bool                   `protobuf:"varint,5,opt,name=result,proto3" json:"result,omitempty"`
+	Data           []byte                 `protobuf:"bytes,6,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ReportItem) Reset() {
+	*x = ReportItem{}
+	mi := &file_api_types_internal_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportItem) ProtoMessage() {}
+
+func (x *ReportItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportItem.ProtoReflect.Descriptor instead.
+func (*ReportItem) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ReportItem) GetMinion() string {
+	if x != nil {
+		return x.Minion
+	}
+	return ""
+}
+
+func (x *ReportItem) GetStartTimestamp() int64 {
+	if x != nil {
+		return x.StartTimestamp
+	}
+	return 0
+}
+
+func (x *ReportItem) GetEndTimestamp() int64 {
+	if x != nil {
+		return x.EndTimestamp
+	}
+	return 0
+}
+
+func (x *ReportItem) GetResult() bool {
+	if x != nil {
+		return x.Result
+	}
+	return false
+}
+
+func (x *ReportItem) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type ReportChange struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportChange) Reset() {
+	*x = ReportChange{}
+	mi := &file_api_types_internal_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportChange) ProtoMessage() {}
+
+func (x *ReportChange) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportChange.ProtoReflect.Descriptor instead.
+func (*ReportChange) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{4}
+}
+
+type ReportSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       int64                  `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Changes       int64                  `protobuf:"varint,2,opt,name=changes,proto3" json:"changes,omitempty"`
+	Failed        int64                  `protobuf:"varint,3,opt,name=failed,proto3" json:"failed,omitempty"`
+	Total         int64                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportSummary) Reset() {
+	*x = ReportSummary{}
+	mi := &file_api_types_internal_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportSummary) ProtoMessage() {}
+
+func (x *ReportSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportSummary.ProtoReflect.Descriptor instead.
+func (*ReportSummary) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ReportSummary) GetSuccess() int64 {
+	if x != nil {
+		return x.Success
+	}
+	return 0
+}
+
+func (x *ReportSummary) GetChanges() int64 {
+	if x != nil {
+		return x.Changes
+	}
+	return 0
+}
+
+func (x *ReportSummary) GetFailed() int64 {
+	if x != nil {
+		return x.Failed
+	}
+	return 0
+}
+
+func (x *ReportSummary) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 type Value struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Type          EventType              `protobuf:"varint,1,opt,name=type,proto3,enum=types.EventType" json:"type,omitempty"`
@@ -479,7 +718,7 @@ type Value struct {
 
 func (x *Value) Reset() {
 	*x = Value{}
-	mi := &file_api_types_internal_proto_msgTypes[2]
+	mi := &file_api_types_internal_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -491,7 +730,7 @@ func (x *Value) String() string {
 func (*Value) ProtoMessage() {}
 
 func (x *Value) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[2]
+	mi := &file_api_types_internal_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -504,7 +743,7 @@ func (x *Value) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Value.ProtoReflect.Descriptor instead.
 func (*Value) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{2}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Value) GetType() EventType {
@@ -531,7 +770,7 @@ type ConnectRequest struct {
 
 func (x *ConnectRequest) Reset() {
 	*x = ConnectRequest{}
-	mi := &file_api_types_internal_proto_msgTypes[3]
+	mi := &file_api_types_internal_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -543,7 +782,7 @@ func (x *ConnectRequest) String() string {
 func (*ConnectRequest) ProtoMessage() {}
 
 func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[3]
+	mi := &file_api_types_internal_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -556,7 +795,7 @@ func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectRequest.ProtoReflect.Descriptor instead.
 func (*ConnectRequest) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{3}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ConnectRequest) GetMinion() *Minion {
@@ -583,7 +822,7 @@ type ConnectResponse struct {
 
 func (x *ConnectResponse) Reset() {
 	*x = ConnectResponse{}
-	mi := &file_api_types_internal_proto_msgTypes[4]
+	mi := &file_api_types_internal_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +834,7 @@ func (x *ConnectResponse) String() string {
 func (*ConnectResponse) ProtoMessage() {}
 
 func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[4]
+	mi := &file_api_types_internal_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +847,7 @@ func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectResponse.ProtoReflect.Descriptor instead.
 func (*ConnectResponse) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{4}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ConnectResponse) GetMinion() *Minion {
@@ -637,7 +876,7 @@ type Field struct {
 
 func (x *Field) Reset() {
 	*x = Field{}
-	mi := &file_api_types_internal_proto_msgTypes[5]
+	mi := &file_api_types_internal_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -649,7 +888,7 @@ func (x *Field) String() string {
 func (*Field) ProtoMessage() {}
 
 func (x *Field) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[5]
+	mi := &file_api_types_internal_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -662,7 +901,7 @@ func (x *Field) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Field.ProtoReflect.Descriptor instead.
 func (*Field) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{5}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Field) GetOp() Op {
@@ -701,7 +940,7 @@ type Segment struct {
 
 func (x *Segment) Reset() {
 	*x = Segment{}
-	mi := &file_api_types_internal_proto_msgTypes[6]
+	mi := &file_api_types_internal_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +952,7 @@ func (x *Segment) String() string {
 func (*Segment) ProtoMessage() {}
 
 func (x *Segment) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[6]
+	mi := &file_api_types_internal_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +965,7 @@ func (x *Segment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Segment.ProtoReflect.Descriptor instead.
 func (*Segment) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{6}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Segment) GetLogic() Logic {
@@ -760,7 +999,7 @@ type Selector struct {
 
 func (x *Selector) Reset() {
 	*x = Selector{}
-	mi := &file_api_types_internal_proto_msgTypes[7]
+	mi := &file_api_types_internal_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -772,7 +1011,7 @@ func (x *Selector) String() string {
 func (*Selector) ProtoMessage() {}
 
 func (x *Selector) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[7]
+	mi := &file_api_types_internal_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -785,7 +1024,7 @@ func (x *Selector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Selector.ProtoReflect.Descriptor instead.
 func (*Selector) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{7}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Selector) GetFields() []*Field {
@@ -798,7 +1037,7 @@ func (x *Selector) GetFields() []*Field {
 type CallRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 请求 id，确认请求唯一值
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// 筛选符合的 minion
 	Selector *Selector `protobuf:"bytes,2,opt,name=selector,proto3" json:"selector,omitempty"`
 	// 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
@@ -813,7 +1052,7 @@ type CallRequest struct {
 
 func (x *CallRequest) Reset() {
 	*x = CallRequest{}
-	mi := &file_api_types_internal_proto_msgTypes[8]
+	mi := &file_api_types_internal_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -825,7 +1064,7 @@ func (x *CallRequest) String() string {
 func (*CallRequest) ProtoMessage() {}
 
 func (x *CallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[8]
+	mi := &file_api_types_internal_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -838,10 +1077,10 @@ func (x *CallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallRequest.ProtoReflect.Descriptor instead.
 func (*CallRequest) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{8}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *CallRequest) GetId() int64 {
+func (x *CallRequest) GetId() uint64 {
 	if x != nil {
 		return x.Id
 	}
@@ -878,9 +1117,10 @@ func (x *CallRequest) GetPillars() map[string]*Value {
 
 type CallResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Type  ResultType             `protobuf:"varint,1,opt,name=type,proto3,enum=types.ResultType" json:"type,omitempty"`
 	// 请求的 id
-	Id int64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 任务返回类型
+	Type ResultType `protobuf:"varint,2,opt,name=type,proto3,enum=types.ResultType" json:"type,omitempty"`
 	// 输出结果
 	Result []byte `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`
 	// 错误信息
@@ -891,7 +1131,7 @@ type CallResponse struct {
 
 func (x *CallResponse) Reset() {
 	*x = CallResponse{}
-	mi := &file_api_types_internal_proto_msgTypes[9]
+	mi := &file_api_types_internal_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -903,7 +1143,7 @@ func (x *CallResponse) String() string {
 func (*CallResponse) ProtoMessage() {}
 
 func (x *CallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_types_internal_proto_msgTypes[9]
+	mi := &file_api_types_internal_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -916,7 +1156,14 @@ func (x *CallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallResponse.ProtoReflect.Descriptor instead.
 func (*CallResponse) Descriptor() ([]byte, []int) {
-	return file_api_types_internal_proto_rawDescGZIP(), []int{9}
+	return file_api_types_internal_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *CallResponse) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
 }
 
 func (x *CallResponse) GetType() ResultType {
@@ -924,13 +1171,6 @@ func (x *CallResponse) GetType() ResultType {
 		return x.Type
 	}
 	return ResultType_ResultSkip
-}
-
-func (x *CallResponse) GetId() int64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
 }
 
 func (x *CallResponse) GetResult() []byte {
@@ -967,7 +1207,23 @@ const file_api_types_internal_proto_rawDesc = "" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\a\n" +
-	"\x05Grain\"A\n" +
+	"\x05Grain\"a\n" +
+	"\x06Report\x12'\n" +
+	"\x05items\x18\x01 \x03(\v2\x11.types.ReportItemR\x05items\x12.\n" +
+	"\asummary\x18\x02 \x01(\v2\x14.types.ReportSummaryR\asummary\"\x9c\x01\n" +
+	"\n" +
+	"ReportItem\x12\x16\n" +
+	"\x06minion\x18\x01 \x01(\tR\x06minion\x12&\n" +
+	"\x0estartTimestamp\x18\x02 \x01(\x03R\x0estartTimestamp\x12\"\n" +
+	"\fendTimestamp\x18\x03 \x01(\x03R\fendTimestamp\x12\x16\n" +
+	"\x06result\x18\x05 \x01(\bR\x06result\x12\x12\n" +
+	"\x04data\x18\x06 \x01(\fR\x04data\"\x0e\n" +
+	"\fReportChange\"q\n" +
+	"\rReportSummary\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\x03R\asuccess\x12\x18\n" +
+	"\achanges\x18\x02 \x01(\x03R\achanges\x12\x16\n" +
+	"\x06failed\x18\x03 \x01(\x03R\x06failed\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x03R\x05total\"A\n" +
 	"\x05Value\x12$\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x10.types.EventTypeR\x04type\x12\x12\n" +
 	"\x04data\x18\x02 \x01(\tR\x04data\"a\n" +
@@ -988,7 +1244,7 @@ const file_api_types_internal_proto_rawDesc = "" +
 	"\bSelector\x12$\n" +
 	"\x06fields\x18\x01 \x03(\v2\f.types.FieldR\x06fields\"\xe4\x02\n" +
 	"\vCallRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12+\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12+\n" +
 	"\bselector\x18\x02 \x01(\v2\x0f.types.SelectorR\bselector\x12\x1a\n" +
 	"\bfunction\x18\x03 \x01(\tR\bfunction\x120\n" +
 	"\x04args\x18\x04 \x03(\v2\x1c.types.CallRequest.ArgsEntryR\x04args\x129\n" +
@@ -999,9 +1255,9 @@ const file_api_types_internal_proto_rawDesc = "" +
 	"\fPillarsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\"\n" +
 	"\x05value\x18\x02 \x01(\v2\f.types.ValueR\x05value:\x028\x01\"s\n" +
-	"\fCallResponse\x12%\n" +
-	"\x04type\x18\x01 \x01(\x0e2\x11.types.ResultTypeR\x04type\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\x03R\x02id\x12\x16\n" +
+	"\fCallResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12%\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x11.types.ResultTypeR\x04type\x12\x16\n" +
 	"\x06result\x18\x03 \x01(\fR\x06result\x12\x14\n" +
 	"\x05error\x18\x04 \x01(\tR\x05error*>\n" +
 	"\tEventType\x12\x10\n" +
@@ -1048,7 +1304,7 @@ func file_api_types_internal_proto_rawDescGZIP() []byte {
 }
 
 var file_api_types_internal_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_api_types_internal_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_api_types_internal_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_api_types_internal_proto_goTypes = []any{
 	(EventType)(0),          // 0: types.EventType
 	(ValueType)(0),          // 1: types.ValueType
@@ -1057,39 +1313,45 @@ var file_api_types_internal_proto_goTypes = []any{
 	(Logic)(0),              // 4: types.Logic
 	(*Minion)(nil),          // 5: types.Minion
 	(*Grain)(nil),           // 6: types.Grain
-	(*Value)(nil),           // 7: types.Value
-	(*ConnectRequest)(nil),  // 8: types.ConnectRequest
-	(*ConnectResponse)(nil), // 9: types.ConnectResponse
-	(*Field)(nil),           // 10: types.Field
-	(*Segment)(nil),         // 11: types.Segment
-	(*Selector)(nil),        // 12: types.Selector
-	(*CallRequest)(nil),     // 13: types.CallRequest
-	(*CallResponse)(nil),    // 14: types.CallResponse
-	nil,                     // 15: types.Minion.TagsEntry
-	nil,                     // 16: types.CallRequest.ArgsEntry
-	nil,                     // 17: types.CallRequest.PillarsEntry
+	(*Report)(nil),          // 7: types.Report
+	(*ReportItem)(nil),      // 8: types.ReportItem
+	(*ReportChange)(nil),    // 9: types.ReportChange
+	(*ReportSummary)(nil),   // 10: types.ReportSummary
+	(*Value)(nil),           // 11: types.Value
+	(*ConnectRequest)(nil),  // 12: types.ConnectRequest
+	(*ConnectResponse)(nil), // 13: types.ConnectResponse
+	(*Field)(nil),           // 14: types.Field
+	(*Segment)(nil),         // 15: types.Segment
+	(*Selector)(nil),        // 16: types.Selector
+	(*CallRequest)(nil),     // 17: types.CallRequest
+	(*CallResponse)(nil),    // 18: types.CallResponse
+	nil,                     // 19: types.Minion.TagsEntry
+	nil,                     // 20: types.CallRequest.ArgsEntry
+	nil,                     // 21: types.CallRequest.PillarsEntry
 }
 var file_api_types_internal_proto_depIdxs = []int32{
-	15, // 0: types.Minion.tags:type_name -> types.Minion.TagsEntry
-	0,  // 1: types.Value.type:type_name -> types.EventType
-	5,  // 2: types.ConnectRequest.minion:type_name -> types.Minion
-	5,  // 3: types.ConnectResponse.minion:type_name -> types.Minion
-	3,  // 4: types.Field.op:type_name -> types.Op
-	4,  // 5: types.Segment.logic:type_name -> types.Logic
-	10, // 6: types.Segment.minion:type_name -> types.Field
-	10, // 7: types.Segment.grain:type_name -> types.Field
-	10, // 8: types.Selector.fields:type_name -> types.Field
-	12, // 9: types.CallRequest.selector:type_name -> types.Selector
-	16, // 10: types.CallRequest.args:type_name -> types.CallRequest.ArgsEntry
-	17, // 11: types.CallRequest.pillars:type_name -> types.CallRequest.PillarsEntry
-	2,  // 12: types.CallResponse.type:type_name -> types.ResultType
-	7,  // 13: types.CallRequest.ArgsEntry.value:type_name -> types.Value
-	7,  // 14: types.CallRequest.PillarsEntry.value:type_name -> types.Value
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	19, // 0: types.Minion.tags:type_name -> types.Minion.TagsEntry
+	8,  // 1: types.Report.items:type_name -> types.ReportItem
+	10, // 2: types.Report.summary:type_name -> types.ReportSummary
+	0,  // 3: types.Value.type:type_name -> types.EventType
+	5,  // 4: types.ConnectRequest.minion:type_name -> types.Minion
+	5,  // 5: types.ConnectResponse.minion:type_name -> types.Minion
+	3,  // 6: types.Field.op:type_name -> types.Op
+	4,  // 7: types.Segment.logic:type_name -> types.Logic
+	14, // 8: types.Segment.minion:type_name -> types.Field
+	14, // 9: types.Segment.grain:type_name -> types.Field
+	14, // 10: types.Selector.fields:type_name -> types.Field
+	16, // 11: types.CallRequest.selector:type_name -> types.Selector
+	20, // 12: types.CallRequest.args:type_name -> types.CallRequest.ArgsEntry
+	21, // 13: types.CallRequest.pillars:type_name -> types.CallRequest.PillarsEntry
+	2,  // 14: types.CallResponse.type:type_name -> types.ResultType
+	11, // 15: types.CallRequest.ArgsEntry.value:type_name -> types.Value
+	11, // 16: types.CallRequest.PillarsEntry.value:type_name -> types.Value
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_api_types_internal_proto_init() }
@@ -1103,7 +1365,7 @@ func file_api_types_internal_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_types_internal_proto_rawDesc), len(file_api_types_internal_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   13,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

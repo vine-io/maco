@@ -85,17 +85,23 @@ enum EventType {
   EventCall = 2;
 }
 
+// ValueType 数值类型
 enum ValueType {
   ValueString = 0;
   ValueInteger = 1;
   ValueFloat = 2;
   ValueBoolean = 3;
+  // 复杂类型，通过 json 转化
   ValueObject = 4;
 }
 
+// ResultType 任务返回类型
 enum ResultType {
+  // 用户不满足条件
   ResultSkip = 0;
+  // 直接结果错误
   ResultError = 1;
+  // 直接结果正确
   ResultOk = 2;
 }
 
@@ -153,7 +159,7 @@ message Selector {
 
 message CallRequest {
   // 请求 id，确认请求唯一值
-  int64 id = 1;
+  uint64 id = 1;
   // 筛选符合的 minion
   Selector selector = 2;
   // 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
@@ -165,9 +171,10 @@ message CallRequest {
 }
 
 message CallResponse {
-  ResultType type = 1;
   // 请求的 id
-  int64 id = 2;
+  uint64 id = 1;
+  // 任务返回类型
+  ResultType type = 2;
   // 输出结果
   bytes result = 3;
   // 错误信息

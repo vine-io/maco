@@ -84,11 +84,11 @@ service InternalRPC {
 message DispatchRequest {
   types.EventType type = 1;
   types.ConnectRequest connect = 2;
-  types.CallRequest call = 3;
+  types.CallResponse call = 3;
 }
 
 message DispatchResponse {
   types.EventType type = 1;
   types.ConnectResponse connect = 2;
-  types.CallResponse call = 3;
+  types.CallRequest call = 3;
 }
