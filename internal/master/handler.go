@@ -24,6 +24,7 @@ package master
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -38,17 +39,14 @@ import (
 
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/docs"
-	"github.com/vine-io/maco/internal/master/config"
-	"github.com/vine-io/maco/pkg/dbutil"
 )
 
 type options struct {
 	listener net.Listener
-	cfg      *config.Config
-	db       *dbutil.DB
+	cfg      *Config
 }
 
-func RegisterRPC(ctx context.Context, opt *options) (http.Handler, error) {
+func registerRPCHandler(ctx context.Context, opt *options) (http.Handler, error) {
 	cfg := opt.cfg
 
 	macoHl, err := newMacoHandler(ctx)
@@ -139,4 +137,41 @@ func newMacoHandler(ctx context.Context) (pb.MacoRPCServer, error) {
 
 func (h *macoHandler) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
 	return &pb.PingResponse{Message: "OK"}, nil
+}
+
+type internalHandler struct {
+	pb.UnimplementedInternalRPCServer
+
+	ctx context.Context
+	cfg *Config
+}
+
+func newInternalHandler(ctx context.Context, cfg *Config) (pb.InternalRPCServer, error) {
+
+	handler := &internalHandler{
+		ctx: ctx,
+		cfg: cfg,
+	}
+
+	return handler, nil
+}
+
+func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
+	ctx := stream.Context()
+
+	for {
+		select {
+		case <-ctx.Done():
+		default:
+
+		}
+
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		_ = req
+	}
+
+	return stream.Send(&pb.DispatchResponse{})
 }

@@ -41,49 +41,267 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type EventKind int32
+type EventType int32
 
 const (
-	EventKind_EventUnknown EventKind = 0
+	EventType_EventUnknown EventType = 0
+	EventType_EventConnect EventType = 1
+	EventType_EventCall    EventType = 2
 )
 
-// Enum value maps for EventKind.
+// Enum value maps for EventType.
 var (
-	EventKind_name = map[int32]string{
+	EventType_name = map[int32]string{
 		0: "EventUnknown",
+		1: "EventConnect",
+		2: "EventCall",
 	}
-	EventKind_value = map[string]int32{
+	EventType_value = map[string]int32{
 		"EventUnknown": 0,
+		"EventConnect": 1,
+		"EventCall":    2,
 	}
 )
 
-func (x EventKind) Enum() *EventKind {
-	p := new(EventKind)
+func (x EventType) Enum() *EventType {
+	p := new(EventType)
 	*p = x
 	return p
 }
 
-func (x EventKind) String() string {
+func (x EventType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (EventKind) Descriptor() protoreflect.EnumDescriptor {
+func (EventType) Descriptor() protoreflect.EnumDescriptor {
 	return file_api_types_internal_proto_enumTypes[0].Descriptor()
 }
 
-func (EventKind) Type() protoreflect.EnumType {
+func (EventType) Type() protoreflect.EnumType {
 	return &file_api_types_internal_proto_enumTypes[0]
 }
 
-func (x EventKind) Number() protoreflect.EnumNumber {
+func (x EventType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use EventKind.Descriptor instead.
-func (EventKind) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use EventType.Descriptor instead.
+func (EventType) EnumDescriptor() ([]byte, []int) {
 	return file_api_types_internal_proto_rawDescGZIP(), []int{0}
 }
 
+type ValueType int32
+
+const (
+	ValueType_ValueString  ValueType = 0
+	ValueType_ValueInteger ValueType = 1
+	ValueType_ValueFloat   ValueType = 2
+	ValueType_ValueBoolean ValueType = 3
+	ValueType_ValueObject  ValueType = 4
+)
+
+// Enum value maps for ValueType.
+var (
+	ValueType_name = map[int32]string{
+		0: "ValueString",
+		1: "ValueInteger",
+		2: "ValueFloat",
+		3: "ValueBoolean",
+		4: "ValueObject",
+	}
+	ValueType_value = map[string]int32{
+		"ValueString":  0,
+		"ValueInteger": 1,
+		"ValueFloat":   2,
+		"ValueBoolean": 3,
+		"ValueObject":  4,
+	}
+)
+
+func (x ValueType) Enum() *ValueType {
+	p := new(ValueType)
+	*p = x
+	return p
+}
+
+func (x ValueType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ValueType) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_types_internal_proto_enumTypes[1].Descriptor()
+}
+
+func (ValueType) Type() protoreflect.EnumType {
+	return &file_api_types_internal_proto_enumTypes[1]
+}
+
+func (x ValueType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ValueType.Descriptor instead.
+func (ValueType) EnumDescriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{1}
+}
+
+type ResultType int32
+
+const (
+	ResultType_ResultSkip  ResultType = 0
+	ResultType_ResultError ResultType = 1
+	ResultType_ResultOk    ResultType = 2
+)
+
+// Enum value maps for ResultType.
+var (
+	ResultType_name = map[int32]string{
+		0: "ResultSkip",
+		1: "ResultError",
+		2: "ResultOk",
+	}
+	ResultType_value = map[string]int32{
+		"ResultSkip":  0,
+		"ResultError": 1,
+		"ResultOk":    2,
+	}
+)
+
+func (x ResultType) Enum() *ResultType {
+	p := new(ResultType)
+	*p = x
+	return p
+}
+
+func (x ResultType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ResultType) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_types_internal_proto_enumTypes[2].Descriptor()
+}
+
+func (ResultType) Type() protoreflect.EnumType {
+	return &file_api_types_internal_proto_enumTypes[2]
+}
+
+func (x ResultType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ResultType.Descriptor instead.
+func (ResultType) EnumDescriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{2}
+}
+
+type Op int32
+
+const (
+	Op_OpEq   Op = 0
+	Op_OpGt   Op = 1
+	Op_OpGte  Op = 2
+	Op_OpLt   Op = 3
+	Op_OpLte  Op = 4
+	Op_OpLike Op = 5
+)
+
+// Enum value maps for Op.
+var (
+	Op_name = map[int32]string{
+		0: "OpEq",
+		1: "OpGt",
+		2: "OpGte",
+		3: "OpLt",
+		4: "OpLte",
+		5: "OpLike",
+	}
+	Op_value = map[string]int32{
+		"OpEq":   0,
+		"OpGt":   1,
+		"OpGte":  2,
+		"OpLt":   3,
+		"OpLte":  4,
+		"OpLike": 5,
+	}
+)
+
+func (x Op) Enum() *Op {
+	p := new(Op)
+	*p = x
+	return p
+}
+
+func (x Op) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Op) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_types_internal_proto_enumTypes[3].Descriptor()
+}
+
+func (Op) Type() protoreflect.EnumType {
+	return &file_api_types_internal_proto_enumTypes[3]
+}
+
+func (x Op) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Op.Descriptor instead.
+func (Op) EnumDescriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{3}
+}
+
+type Logic int32
+
+const (
+	Logic_LgUnknown Logic = 0
+	Logic_LgAnd     Logic = 1 // 逻辑与
+	Logic_LgOr      Logic = 2 // 逻辑或
+)
+
+// Enum value maps for Logic.
+var (
+	Logic_name = map[int32]string{
+		0: "LgUnknown",
+		1: "LgAnd",
+		2: "LgOr",
+	}
+	Logic_value = map[string]int32{
+		"LgUnknown": 0,
+		"LgAnd":     1,
+		"LgOr":      2,
+	}
+)
+
+func (x Logic) Enum() *Logic {
+	p := new(Logic)
+	*p = x
+	return p
+}
+
+func (x Logic) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Logic) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_types_internal_proto_enumTypes[4].Descriptor()
+}
+
+func (Logic) Type() protoreflect.EnumType {
+	return &file_api_types_internal_proto_enumTypes[4]
+}
+
+func (x Logic) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Logic.Descriptor instead.
+func (Logic) EnumDescriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{4}
+}
+
+// Minion defines the base information of maco-minion
 type Minion struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Name     string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -95,16 +313,14 @@ type Minion struct {
 	Os string `protobuf:"bytes,6,opt,name=os,proto3" json:"os,omitempty"`
 	// cpu architecture
 	Arch string `protobuf:"bytes,7,opt,name=arch,proto3" json:"arch,omitempty"`
-	// the version of node
+	// the version of minion
 	Version string `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
-	// the state of node, etc unaccepted, accepted, denied, rejected
-	State string `protobuf:"bytes,9,opt,name=state,proto3" json:"state,omitempty"`
 	// registry time
-	RegistryTimestamp int64 `protobuf:"varint,11,opt,name=registry_timestamp,json=registryTimestamp,proto3" json:"registry_timestamp,omitempty"`
-	// the timestamp of node connects to server
-	OnlineTimestamp int64 `protobuf:"varint,12,opt,name=online_timestamp,json=onlineTimestamp,proto3" json:"online_timestamp,omitempty"`
-	// the timestamp of node offline
-	OfflineTimestamp int64 `protobuf:"varint,13,opt,name=offline_timestamp,json=offlineTimestamp,proto3" json:"offline_timestamp,omitempty"`
+	RegistryTimestamp int64 `protobuf:"varint,21,opt,name=registry_timestamp,json=registryTimestamp,proto3" json:"registry_timestamp,omitempty"`
+	// the timestamp of minion connects to server
+	OnlineTimestamp int64 `protobuf:"varint,22,opt,name=online_timestamp,json=onlineTimestamp,proto3" json:"online_timestamp,omitempty"`
+	// the timestamp of minion offline
+	OfflineTimestamp int64 `protobuf:"varint,23,opt,name=offline_timestamp,json=offlineTimestamp,proto3" json:"offline_timestamp,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -195,13 +411,6 @@ func (x *Minion) GetVersion() string {
 	return ""
 }
 
-func (x *Minion) GetState() string {
-	if x != nil {
-		return x.State
-	}
-	return ""
-}
-
 func (x *Minion) GetRegistryTimestamp() int64 {
 	if x != nil {
 		return x.RegistryTimestamp
@@ -223,11 +432,526 @@ func (x *Minion) GetOfflineTimestamp() int64 {
 	return 0
 }
 
+// Grain defines the base
+type Grain struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Grain) Reset() {
+	*x = Grain{}
+	mi := &file_api_types_internal_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Grain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Grain) ProtoMessage() {}
+
+func (x *Grain) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Grain.ProtoReflect.Descriptor instead.
+func (*Grain) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{1}
+}
+
+type Value struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          EventType              `protobuf:"varint,1,opt,name=type,proto3,enum=types.EventType" json:"type,omitempty"`
+	Data          string                 `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Value) Reset() {
+	*x = Value{}
+	mi := &file_api_types_internal_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Value) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Value) ProtoMessage() {}
+
+func (x *Value) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Value.ProtoReflect.Descriptor instead.
+func (*Value) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Value) GetType() EventType {
+	if x != nil {
+		return x.Type
+	}
+	return EventType_EventUnknown
+}
+
+func (x *Value) GetData() string {
+	if x != nil {
+		return x.Data
+	}
+	return ""
+}
+
+type ConnectRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Minion          *Minion                `protobuf:"bytes,1,opt,name=minion,proto3" json:"minion,omitempty"`
+	MinionPublicKey []byte                 `protobuf:"bytes,2,opt,name=minionPublicKey,proto3" json:"minionPublicKey,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ConnectRequest) Reset() {
+	*x = ConnectRequest{}
+	mi := &file_api_types_internal_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectRequest) ProtoMessage() {}
+
+func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectRequest.ProtoReflect.Descriptor instead.
+func (*ConnectRequest) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ConnectRequest) GetMinion() *Minion {
+	if x != nil {
+		return x.Minion
+	}
+	return nil
+}
+
+func (x *ConnectRequest) GetMinionPublicKey() []byte {
+	if x != nil {
+		return x.MinionPublicKey
+	}
+	return nil
+}
+
+type ConnectResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Minion          *Minion                `protobuf:"bytes,1,opt,name=minion,proto3" json:"minion,omitempty"`
+	MasterPublicKey []byte                 `protobuf:"bytes,2,opt,name=masterPublicKey,proto3" json:"masterPublicKey,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ConnectResponse) Reset() {
+	*x = ConnectResponse{}
+	mi := &file_api_types_internal_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectResponse) ProtoMessage() {}
+
+func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectResponse.ProtoReflect.Descriptor instead.
+func (*ConnectResponse) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ConnectResponse) GetMinion() *Minion {
+	if x != nil {
+		return x.Minion
+	}
+	return nil
+}
+
+func (x *ConnectResponse) GetMasterPublicKey() []byte {
+	if x != nil {
+		return x.MasterPublicKey
+	}
+	return nil
+}
+
+// Condition 筛选条件
+type Field struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Op            Op                     `protobuf:"varint,1,opt,name=op,proto3,enum=types.Op" json:"op,omitempty"`
+	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	Value         string                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Field) Reset() {
+	*x = Field{}
+	mi := &file_api_types_internal_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Field) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Field) ProtoMessage() {}
+
+func (x *Field) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Field.ProtoReflect.Descriptor instead.
+func (*Field) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Field) GetOp() Op {
+	if x != nil {
+		return x.Op
+	}
+	return Op_OpEq
+}
+
+func (x *Field) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *Field) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// Segment 筛选语句
+type Segment struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 连接逻辑
+	Logic Logic `protobuf:"varint,1,opt,name=logic,proto3,enum=types.Logic" json:"logic,omitempty"`
+	// minion 条件
+	Minion *Field `protobuf:"bytes,2,opt,name=minion,proto3" json:"minion,omitempty"`
+	// minion grain 条件
+	Grain         *Field `protobuf:"bytes,3,opt,name=grain,proto3" json:"grain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Segment) Reset() {
+	*x = Segment{}
+	mi := &file_api_types_internal_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Segment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Segment) ProtoMessage() {}
+
+func (x *Segment) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Segment.ProtoReflect.Descriptor instead.
+func (*Segment) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Segment) GetLogic() Logic {
+	if x != nil {
+		return x.Logic
+	}
+	return Logic_LgUnknown
+}
+
+func (x *Segment) GetMinion() *Field {
+	if x != nil {
+		return x.Minion
+	}
+	return nil
+}
+
+func (x *Segment) GetGrain() *Field {
+	if x != nil {
+		return x.Grain
+	}
+	return nil
+}
+
+// Selector minion 筛选器
+type Selector struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Fields        []*Field               `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Selector) Reset() {
+	*x = Selector{}
+	mi := &file_api_types_internal_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Selector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Selector) ProtoMessage() {}
+
+func (x *Selector) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Selector.ProtoReflect.Descriptor instead.
+func (*Selector) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *Selector) GetFields() []*Field {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
+}
+
+type CallRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 请求 id，确认请求唯一值
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 筛选符合的 minion
+	Selector *Selector `protobuf:"bytes,2,opt,name=selector,proto3" json:"selector,omitempty"`
+	// 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
+	Function string `protobuf:"bytes,3,opt,name=function,proto3" json:"function,omitempty"`
+	// 方法参数
+	Args map[string]*Value `protobuf:"bytes,4,rep,name=args,proto3" json:"args,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// 加密参数
+	Pillars       map[string]*Value `protobuf:"bytes,5,rep,name=pillars,proto3" json:"pillars,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallRequest) Reset() {
+	*x = CallRequest{}
+	mi := &file_api_types_internal_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallRequest) ProtoMessage() {}
+
+func (x *CallRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallRequest.ProtoReflect.Descriptor instead.
+func (*CallRequest) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CallRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CallRequest) GetSelector() *Selector {
+	if x != nil {
+		return x.Selector
+	}
+	return nil
+}
+
+func (x *CallRequest) GetFunction() string {
+	if x != nil {
+		return x.Function
+	}
+	return ""
+}
+
+func (x *CallRequest) GetArgs() map[string]*Value {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *CallRequest) GetPillars() map[string]*Value {
+	if x != nil {
+		return x.Pillars
+	}
+	return nil
+}
+
+type CallResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Type  ResultType             `protobuf:"varint,1,opt,name=type,proto3,enum=types.ResultType" json:"type,omitempty"`
+	// 请求的 id
+	Id int64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	// 输出结果
+	Result []byte `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`
+	// 错误信息
+	Error         string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallResponse) Reset() {
+	*x = CallResponse{}
+	mi := &file_api_types_internal_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallResponse) ProtoMessage() {}
+
+func (x *CallResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_types_internal_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallResponse.ProtoReflect.Descriptor instead.
+func (*CallResponse) Descriptor() ([]byte, []int) {
+	return file_api_types_internal_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CallResponse) GetType() ResultType {
+	if x != nil {
+		return x.Type
+	}
+	return ResultType_ResultSkip
+}
+
+func (x *CallResponse) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CallResponse) GetResult() []byte {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *CallResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_api_types_internal_proto protoreflect.FileDescriptor
 
 const file_api_types_internal_proto_rawDesc = "" +
 	"\n" +
-	"\x18api/types/internal.proto\x12\x05types\"\x9b\x03\n" +
+	"\x18api/types/internal.proto\x12\x05types\"\x85\x03\n" +
 	"\x06Minion\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x0e\n" +
@@ -236,16 +960,79 @@ const file_api_types_internal_proto_rawDesc = "" +
 	"\x04tags\x18\x05 \x03(\v2\x17.types.Minion.TagsEntryR\x04tags\x12\x0e\n" +
 	"\x02os\x18\x06 \x01(\tR\x02os\x12\x12\n" +
 	"\x04arch\x18\a \x01(\tR\x04arch\x12\x18\n" +
-	"\aversion\x18\b \x01(\tR\aversion\x12\x14\n" +
-	"\x05state\x18\t \x01(\tR\x05state\x12-\n" +
-	"\x12registry_timestamp\x18\v \x01(\x03R\x11registryTimestamp\x12)\n" +
-	"\x10online_timestamp\x18\f \x01(\x03R\x0fonlineTimestamp\x12+\n" +
-	"\x11offline_timestamp\x18\r \x01(\x03R\x10offlineTimestamp\x1a7\n" +
+	"\aversion\x18\b \x01(\tR\aversion\x12-\n" +
+	"\x12registry_timestamp\x18\x15 \x01(\x03R\x11registryTimestamp\x12)\n" +
+	"\x10online_timestamp\x18\x16 \x01(\x03R\x0fonlineTimestamp\x12+\n" +
+	"\x11offline_timestamp\x18\x17 \x01(\x03R\x10offlineTimestamp\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01*\x1d\n" +
-	"\tEventKind\x12\x10\n" +
-	"\fEventUnknown\x10\x00BN\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\a\n" +
+	"\x05Grain\"A\n" +
+	"\x05Value\x12$\n" +
+	"\x04type\x18\x01 \x01(\x0e2\x10.types.EventTypeR\x04type\x12\x12\n" +
+	"\x04data\x18\x02 \x01(\tR\x04data\"a\n" +
+	"\x0eConnectRequest\x12%\n" +
+	"\x06minion\x18\x01 \x01(\v2\r.types.MinionR\x06minion\x12(\n" +
+	"\x0fminionPublicKey\x18\x02 \x01(\fR\x0fminionPublicKey\"b\n" +
+	"\x0fConnectResponse\x12%\n" +
+	"\x06minion\x18\x01 \x01(\v2\r.types.MinionR\x06minion\x12(\n" +
+	"\x0fmasterPublicKey\x18\x02 \x01(\fR\x0fmasterPublicKey\"N\n" +
+	"\x05Field\x12\x19\n" +
+	"\x02op\x18\x01 \x01(\x0e2\t.types.OpR\x02op\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"w\n" +
+	"\aSegment\x12\"\n" +
+	"\x05logic\x18\x01 \x01(\x0e2\f.types.LogicR\x05logic\x12$\n" +
+	"\x06minion\x18\x02 \x01(\v2\f.types.FieldR\x06minion\x12\"\n" +
+	"\x05grain\x18\x03 \x01(\v2\f.types.FieldR\x05grain\"0\n" +
+	"\bSelector\x12$\n" +
+	"\x06fields\x18\x01 \x03(\v2\f.types.FieldR\x06fields\"\xe4\x02\n" +
+	"\vCallRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12+\n" +
+	"\bselector\x18\x02 \x01(\v2\x0f.types.SelectorR\bselector\x12\x1a\n" +
+	"\bfunction\x18\x03 \x01(\tR\bfunction\x120\n" +
+	"\x04args\x18\x04 \x03(\v2\x1c.types.CallRequest.ArgsEntryR\x04args\x129\n" +
+	"\apillars\x18\x05 \x03(\v2\x1f.types.CallRequest.PillarsEntryR\apillars\x1aE\n" +
+	"\tArgsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\"\n" +
+	"\x05value\x18\x02 \x01(\v2\f.types.ValueR\x05value:\x028\x01\x1aH\n" +
+	"\fPillarsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\"\n" +
+	"\x05value\x18\x02 \x01(\v2\f.types.ValueR\x05value:\x028\x01\"s\n" +
+	"\fCallResponse\x12%\n" +
+	"\x04type\x18\x01 \x01(\x0e2\x11.types.ResultTypeR\x04type\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\x03R\x02id\x12\x16\n" +
+	"\x06result\x18\x03 \x01(\fR\x06result\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error*>\n" +
+	"\tEventType\x12\x10\n" +
+	"\fEventUnknown\x10\x00\x12\x10\n" +
+	"\fEventConnect\x10\x01\x12\r\n" +
+	"\tEventCall\x10\x02*a\n" +
+	"\tValueType\x12\x0f\n" +
+	"\vValueString\x10\x00\x12\x10\n" +
+	"\fValueInteger\x10\x01\x12\x0e\n" +
+	"\n" +
+	"ValueFloat\x10\x02\x12\x10\n" +
+	"\fValueBoolean\x10\x03\x12\x0f\n" +
+	"\vValueObject\x10\x04*;\n" +
+	"\n" +
+	"ResultType\x12\x0e\n" +
+	"\n" +
+	"ResultSkip\x10\x00\x12\x0f\n" +
+	"\vResultError\x10\x01\x12\f\n" +
+	"\bResultOk\x10\x02*D\n" +
+	"\x02Op\x12\b\n" +
+	"\x04OpEq\x10\x00\x12\b\n" +
+	"\x04OpGt\x10\x01\x12\t\n" +
+	"\x05OpGte\x10\x02\x12\b\n" +
+	"\x04OpLt\x10\x03\x12\t\n" +
+	"\x05OpLte\x10\x04\x12\n" +
+	"\n" +
+	"\x06OpLike\x10\x05*+\n" +
+	"\x05Logic\x12\r\n" +
+	"\tLgUnknown\x10\x00\x12\t\n" +
+	"\x05LgAnd\x10\x01\x12\b\n" +
+	"\x04LgOr\x10\x02BN\n" +
 	"\x16io.vine.maco.api.typesB\tMacoTypesP\x01Z'github.com/vine-io/maco/api/types;typesb\x06proto3"
 
 var (
@@ -260,20 +1047,49 @@ func file_api_types_internal_proto_rawDescGZIP() []byte {
 	return file_api_types_internal_proto_rawDescData
 }
 
-var file_api_types_internal_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_types_internal_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_types_internal_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_api_types_internal_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_api_types_internal_proto_goTypes = []any{
-	(EventKind)(0), // 0: types.EventKind
-	(*Minion)(nil), // 1: types.Minion
-	nil,            // 2: types.Minion.TagsEntry
+	(EventType)(0),          // 0: types.EventType
+	(ValueType)(0),          // 1: types.ValueType
+	(ResultType)(0),         // 2: types.ResultType
+	(Op)(0),                 // 3: types.Op
+	(Logic)(0),              // 4: types.Logic
+	(*Minion)(nil),          // 5: types.Minion
+	(*Grain)(nil),           // 6: types.Grain
+	(*Value)(nil),           // 7: types.Value
+	(*ConnectRequest)(nil),  // 8: types.ConnectRequest
+	(*ConnectResponse)(nil), // 9: types.ConnectResponse
+	(*Field)(nil),           // 10: types.Field
+	(*Segment)(nil),         // 11: types.Segment
+	(*Selector)(nil),        // 12: types.Selector
+	(*CallRequest)(nil),     // 13: types.CallRequest
+	(*CallResponse)(nil),    // 14: types.CallResponse
+	nil,                     // 15: types.Minion.TagsEntry
+	nil,                     // 16: types.CallRequest.ArgsEntry
+	nil,                     // 17: types.CallRequest.PillarsEntry
 }
 var file_api_types_internal_proto_depIdxs = []int32{
-	2, // 0: types.Minion.tags:type_name -> types.Minion.TagsEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	15, // 0: types.Minion.tags:type_name -> types.Minion.TagsEntry
+	0,  // 1: types.Value.type:type_name -> types.EventType
+	5,  // 2: types.ConnectRequest.minion:type_name -> types.Minion
+	5,  // 3: types.ConnectResponse.minion:type_name -> types.Minion
+	3,  // 4: types.Field.op:type_name -> types.Op
+	4,  // 5: types.Segment.logic:type_name -> types.Logic
+	10, // 6: types.Segment.minion:type_name -> types.Field
+	10, // 7: types.Segment.grain:type_name -> types.Field
+	10, // 8: types.Selector.fields:type_name -> types.Field
+	12, // 9: types.CallRequest.selector:type_name -> types.Selector
+	16, // 10: types.CallRequest.args:type_name -> types.CallRequest.ArgsEntry
+	17, // 11: types.CallRequest.pillars:type_name -> types.CallRequest.PillarsEntry
+	2,  // 12: types.CallResponse.type:type_name -> types.ResultType
+	7,  // 13: types.CallRequest.ArgsEntry.value:type_name -> types.Value
+	7,  // 14: types.CallRequest.PillarsEntry.value:type_name -> types.Value
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_api_types_internal_proto_init() }
@@ -286,8 +1102,8 @@ func file_api_types_internal_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_types_internal_proto_rawDesc), len(file_api_types_internal_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   2,
+			NumEnums:      5,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

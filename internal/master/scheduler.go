@@ -23,30 +23,51 @@ package master
 
 import (
 	"context"
+	"sync"
 
-	"google.golang.org/grpc"
+	"github.com/alphadose/haxmap"
 
-	pb "github.com/vine-io/maco/api/rpc"
-	"github.com/vine-io/maco/internal/master/config"
+	"github.com/vine-io/maco/pkg/dsutil"
 )
 
-type internalHandler struct {
-	pb.UnimplementedInternalRPCServer
-
+type pipe struct {
 	ctx context.Context
-	cfg *config.Config
+
+	name string
 }
 
-func newInternalHandler(ctx context.Context, cfg *config.Config) (pb.InternalRPCServer, error) {
+type Scheduler struct {
+	pmu   sync.RWMutex
+	pipes *haxmap.Map[string, *pipe]
 
-	handler := &internalHandler{
-		ctx: ctx,
-		cfg: cfg,
+	gmu    sync.RWMutex
+	groups *haxmap.Map[string, *dsutil.HashSet[string]]
+
+	storage *Storage
+}
+
+func NewScheduler(storage *Storage) (*Scheduler, error) {
+
+	pipes := haxmap.New[string, *pipe]()
+	groups := haxmap.New[string, *dsutil.HashSet[string]]()
+	sch := &Scheduler{
+		pipes:   pipes,
+		groups:  groups,
+		storage: storage,
 	}
 
-	return handler, nil
+	return sch, nil
 }
 
-func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
-	return stream.Send(&pb.DispatchResponse{})
+func (s *Scheduler) Dispatch() error {
+	return nil
+}
+
+func (s *Scheduler) Run(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		}
+	}
 }

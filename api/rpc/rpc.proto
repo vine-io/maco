@@ -53,6 +53,12 @@ service MacoRPC {
 //      ]
 //    };
   }
+
+  rpc Call(CallRequest) returns (CallResponse) {
+    option (google.api.http) = {
+      get: "/v1/call"
+    };
+  };
 }
 
 message PingRequest {}
@@ -61,28 +67,28 @@ message PingResponse {
   string message = 1;
 }
 
+message CallRequest {
+  repeated string hosts = 1;
+  string function = 2;
+  map<string, types.Value> args = 3;
+}
+
+message CallResponse {
+
+}
+
 service InternalRPC {
-  rpc Connect(ConnectRequest) returns (ConnectResponse);
   rpc Dispatch(stream DispatchRequest) returns (stream DispatchResponse);
 }
 
-message ConnectRequest {
-  types.Minion minion = 1;
-  bytes minionPublicKey = 2;
-}
-
-message ConnectResponse {
-  types.Minion minion = 1;
-  bytes masterPublicKey = 2;
-}
-
-
 message DispatchRequest {
-  types.EventKind kind = 1;
-  bytes body = 2;
+  types.EventType type = 1;
+  types.ConnectRequest connect = 2;
+  types.CallRequest call = 3;
 }
 
 message DispatchResponse {
-  types.EventKind kind = 1;
-  bytes body = 3;
+  types.EventType type = 1;
+  types.ConnectResponse connect = 2;
+  types.CallResponse call = 3;
 }

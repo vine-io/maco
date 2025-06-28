@@ -28,6 +28,7 @@ option java_multiple_files = true;
 option java_package = "io.vine.maco.api.types";
 option java_outer_classname = "MacoTypes";
 
+// Minion defines the base information of maco-minion
 message Minion {
   string name = 1;
   string uid = 2;
@@ -38,19 +39,137 @@ message Minion {
   string os = 6;
   // cpu architecture
   string arch = 7;
-  // the version of node
+  // the version of minion
   string version = 8;
-  // the state of node, etc unaccepted, accepted, denied, rejected
-  string state = 9;
   // registry time
-  int64 registry_timestamp = 11;
-  // the timestamp of node connects to server
-  int64 online_timestamp = 12;
-  // the timestamp of node offline
-  int64 offline_timestamp = 13;
+  int64 registry_timestamp = 21;
+  // the timestamp of minion connects to server
+  int64 online_timestamp = 22;
+  // the timestamp of minion offline
+  int64 offline_timestamp = 23;
 }
 
-enum EventKind {
+// Grain defines the base
+message Grain {
+
+}
+
+// Report Minion 执行结果
+message Report {
+  repeated ReportItem items = 1;
+  ReportSummary summary = 2;
+}
+
+message ReportItem {
+  string minion = 1;
+  int64 startTimestamp = 2;
+  int64 endTimestamp = 3;
+  bool result = 5;
+  bytes data = 6;
+}
+
+message ReportChange {
+
+}
+
+message ReportSummary {
+  int64 success = 1;
+  int64 changes = 2;
+  int64 failed = 3;
+  int64 total = 4;
+}
+
+enum EventType {
   EventUnknown = 0;
+  EventConnect = 1;
+  EventCall = 2;
 }
 
+enum ValueType {
+  ValueString = 0;
+  ValueInteger = 1;
+  ValueFloat = 2;
+  ValueBoolean = 3;
+  ValueObject = 4;
+}
+
+enum ResultType {
+  ResultSkip = 0;
+  ResultError = 1;
+  ResultOk = 2;
+}
+
+message Value {
+  EventType type = 1;
+  string data = 2;
+}
+
+message ConnectRequest {
+  types.Minion minion = 1;
+  bytes minionPublicKey = 2;
+}
+
+message ConnectResponse {
+  types.Minion minion = 1;
+  bytes masterPublicKey = 2;
+}
+
+enum Op {
+  OpEq = 0;
+  OpGt = 1;
+  OpGte = 2;
+  OpLt = 3;
+  OpLte = 4;
+  OpLike = 5;
+}
+
+enum Logic {
+  LgUnknown = 0;
+  LgAnd = 1; // 逻辑与
+  LgOr = 2; // 逻辑或
+}
+
+// Condition 筛选条件
+message Field {
+  Op op = 1;
+  string query = 2;
+  string value = 3;
+}
+
+// Segment 筛选语句
+message Segment {
+  // 连接逻辑
+  Logic logic = 1;
+  // minion 条件
+  Field minion = 2;
+  // minion grain 条件
+  Field grain = 3;
+}
+
+// Selector minion 筛选器
+message Selector {
+  repeated Field fields = 1;
+}
+
+message CallRequest {
+  // 请求 id，确认请求唯一值
+  int64 id = 1;
+  // 筛选符合的 minion
+  Selector selector = 2;
+  // 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
+  string function = 3;
+  // 方法参数
+  map<string, Value> args = 4;
+  // 加密参数
+  map<string, Value> pillars = 5;
+}
+
+message CallResponse {
+  ResultType type = 1;
+  // 请求的 id
+  int64 id = 2;
+  // 输出结果
+  bytes result = 3;
+  // 错误信息
+  string error = 4;
+}
