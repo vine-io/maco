@@ -5,8 +5,31 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: bab68792e1dd5e7e5d82581dc5e4bf65f34ae2bf
+    version: 9d1a50b7e4c85fcc0b4ee4bb3b3faf62b9b8ff56
 paths:
+    /v1/call:
+        get:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_Call
+            parameters:
+                - name: hosts
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+                - name: function
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.CallResponse'
     /v1/ping:
         get:
             tags:
@@ -21,6 +44,9 @@ paths:
                                 $ref: '#/components/schemas/rpc.macopb.PingResponse'
 components:
     schemas:
+        rpc.macopb.CallResponse:
+            type: object
+            properties: {}
         rpc.macopb.PingResponse:
             type: object
             properties:

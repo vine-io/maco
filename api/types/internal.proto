@@ -99,10 +99,10 @@ enum ValueType {
 enum ResultType {
   // 用户不满足条件
   ResultSkip = 0;
-  // 直接结果错误
-  ResultError = 1;
   // 直接结果正确
-  ResultOk = 2;
+  ResultOk = 1;
+  // 直接结果错误
+  ResultError = 2;
 }
 
 message Value {

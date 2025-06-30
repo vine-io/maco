@@ -30,3 +30,7 @@ const (
 	Denied     MinionState = "denied"
 	Rejected   MinionState = "rejected"
 )
+
+func (s MinionState) String() string {
+	return string(s)
+}

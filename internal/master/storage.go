@@ -54,6 +54,7 @@ var (
 type MinionInfo struct {
 	*types.Minion
 	PubKey []byte
+	State  types.MinionState
 }
 
 type Options struct {
@@ -74,8 +75,7 @@ type Storage struct {
 
 	pair *pemutil.RsaPair
 
-	cmu sync.RWMutex
-
+	cmu         sync.RWMutex
 	minionCache map[types.MinionState]*dsutil.HashSet[string]
 }
 
@@ -195,22 +195,63 @@ func (s *Storage) ServerRsa() *pemutil.RsaPair {
 	return s.pair
 }
 
-func (s *Storage) AddMinion(minion *types.Minion, state types.MinionState, pubKey []byte) error {
-	id := minion.Name
-	if err := s.addMinion(id, state); err != nil {
-		return err
+// GetMinions 返回指定状态的 minion 列表，如何 state 类型不正确或者列表为空，返回 ErrNotFound
+func (s *Storage) GetMinions(state types.MinionState) ([]string, error) {
+	s.cmu.Lock()
+	defer s.cmu.Unlock()
+
+	sets, ok := s.minionCache[state]
+	if !ok {
+		return nil, ErrNotFound
 	}
 
-	minionRoot := filepath.Join(s.dir, minionPath, id)
-	pubKeyPath := filepath.Join(minionRoot, "minion.pub")
-	if err := os.WriteFile(pubKeyPath, pubKey, 0600); err != nil {
-		return err
+	minions := sets.Values()
+	if len(minions) == 0 {
+		return nil, ErrNotFound
 	}
 
-	return s.UpdateMinion(minion)
+	return minions, nil
 }
 
-func (s *Storage) UpdateMinion(minion *types.Minion) error {
+func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) (types.MinionState, error) {
+	state, err := s.getUpdate(minion.Name)
+	if err != nil {
+		if !errors.Is(err, ErrNotFound) {
+			return "", err
+		}
+
+		// minion 不存在，创建并保存数据
+		state = types.Unaccepted
+		if autoSign {
+			state = types.AutoSign
+		}
+
+		name := minion.Name
+		if err = s.addMinion(name, autoSign); err != nil {
+			return state, err
+		}
+
+		minionRoot := filepath.Join(s.dir, minionPath, name)
+		pubKeyPath := filepath.Join(minionRoot, "minion.pub")
+		if err = os.WriteFile(pubKeyPath, pubKey, 0600); err != nil {
+			return state, err
+		}
+
+		if err = s.setUpdate(minion.Name, state); err != nil {
+			return state, err
+		}
+
+		s.cmu.Lock()
+		sets := s.minionCache[state]
+		sets.Add(minion.Name)
+		s.cmu.Unlock()
+	}
+
+	err = s.updateMinion(minion)
+	return state, err
+}
+
+func (s *Storage) updateMinion(minion *types.Minion) error {
 	minionRoot := filepath.Join(s.dir, minionPath, minion.Name)
 	_ = os.MkdirAll(minionRoot, 0700)
 	minionId := filepath.Join(minionRoot, "minion")
@@ -225,11 +266,27 @@ func (s *Storage) UpdateMinion(minion *types.Minion) error {
 	return nil
 }
 
+func (s *Storage) setUpdate(name string, state types.MinionState) error {
+	filename := filepath.Join(s.dir, minionPath, name, "state")
+	return os.WriteFile(filename, []byte(state), 0600)
+}
+
+func (s *Storage) getUpdate(name string) (types.MinionState, error) {
+	data, err := os.ReadFile(filepath.Join(s.dir, minionPath, name, "state"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return types.MinionState(data), nil
+}
+
 func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
 	info := &MinionInfo{}
 
-	minionRoot := filepath.Join(s.dir, minionPath, name)
-	data, err := os.ReadFile(minionRoot)
+	root := filepath.Join(s.dir, minionPath, name)
+	data, err := os.ReadFile(root)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrNotFound
@@ -240,15 +297,21 @@ func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
 	if err = json.Unmarshal(data, &minion); err != nil {
 		return nil, err
 	}
-	pubKey, err := os.ReadFile(filepath.Join(minionRoot, "minion.pub"))
+	pubKey, err := os.ReadFile(filepath.Join(root, "minion.pub"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
+	stateByte, err := os.ReadFile(filepath.Join(root, "state"))
+	if err != nil {
+		return nil, err
+	}
+
 	info.Minion = &minion
 	info.PubKey = pubKey
+	info.State = types.MinionState(stateByte)
 
 	return info, nil
 }
@@ -256,29 +319,37 @@ func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
 func (s *Storage) AcceptMinion(name string, includeRejected, includeDenied bool) error {
 	var exists bool
 
-	s.cmu.Lock()
+	s.cmu.RLock()
 	sets := s.minionCache[types.Unaccepted]
 	exists = sets.Contains(name)
 
-	if !exists {
+	if exists {
+		sets.Remove(name)
+	} else {
 		if includeRejected {
 			sets = s.minionCache[types.Rejected]
 			exists = sets.Contains(name)
+			if exists {
+				sets.Remove(name)
+			}
 		}
 		if includeDenied {
 			sets = s.minionCache[types.Denied]
 			exists = sets.Contains(name)
+			if exists {
+				sets.Remove(name)
+			}
 		}
 	}
-	s.cmu.Unlock()
+	s.cmu.RUnlock()
 
 	if !exists {
 		return ErrNotFound
 	}
 
-	s.cmu.RLock()
+	s.cmu.Lock()
 	s.minionCache[types.Accepted].Add(name)
-	s.cmu.RUnlock()
+	s.cmu.Unlock()
 
 	return s.acceptMinion(name)
 }
@@ -290,10 +361,21 @@ func (s *Storage) RejectMinion(name string, includeAccepted bool) error {
 	sets := s.minionCache[types.Unaccepted]
 	exists = sets.Contains(name)
 
-	if !exists {
+	if exists {
+		sets.Remove(name)
+	} else {
 		if includeAccepted {
 			sets = s.minionCache[types.Accepted]
 			exists = sets.Contains(name)
+			if exists {
+				sets.Remove(name)
+			} else {
+				sets = s.minionCache[types.AutoSign]
+				exists = sets.Contains(name)
+				if exists {
+					sets.Remove(name)
+				}
+			}
 		}
 	}
 	s.cmu.Unlock()
@@ -302,14 +384,24 @@ func (s *Storage) RejectMinion(name string, includeAccepted bool) error {
 		return ErrNotFound
 	}
 
-	s.cmu.RLock()
+	s.cmu.Lock()
 	s.minionCache[types.Rejected].Add(name)
-	s.cmu.RUnlock()
+	s.cmu.Unlock()
 
 	return s.rejectMinion(name)
 }
 
 func (s *Storage) DeleteMinion(name string) error {
+	state, err := s.getUpdate(name)
+	if err != nil {
+		return err
+	}
+
+	s.cmu.Lock()
+	sets := s.minionCache[state]
+	sets.Remove(name)
+	s.cmu.Unlock()
+
 	if err := s.deleteMinion(name); err != nil {
 		return err
 	}
@@ -318,43 +410,28 @@ func (s *Storage) DeleteMinion(name string) error {
 	return os.RemoveAll(minionRoot)
 }
 
-func (s *Storage) GetMinions(state types.MinionState) ([]string, error) {
-	s.cmu.Lock()
-	defer s.cmu.Unlock()
+func (s *Storage) addMinion(id string, autoSign bool) error {
 
-	sets, ok := s.minionCache[state]
-	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrInvalidState, state)
-	}
-
-	minions := sets.Values()
-	return minions, nil
-}
-
-func (s *Storage) addMinion(id string, state types.MinionState) error {
-	var kind string
-	switch state {
-	case types.Unaccepted:
-		kind = minionPrePath
-	case types.Accepted:
-		kind = minionAcceptPath
-	case types.AutoSign:
+	state := types.Unaccepted
+	kind := minionPrePath
+	if autoSign {
+		state = types.AutoSign
 		kind = minionAutoPath
-	case types.Denied:
-		kind = minionDeniedPath
-	case types.Rejected:
-		kind = minionRejectPath
-	default:
-		return fmt.Errorf("%w: %s", ErrInvalidState, state)
 	}
 
 	source := filepath.Join(s.dir, minionPath, id)
 	minionId := filepath.Join(s.dir, kind, id)
+	stateId := filepath.Join(minionId, "state")
+	_ = os.WriteFile(stateId, []byte(state), 0600)
 	return os.Symlink(source, minionId)
 }
 
 func (s *Storage) acceptMinion(id string) error {
-	preId := filepath.Join(s.dir, minionPrePath, id)
+	state, err := s.getUpdate(id)
+	if err != nil {
+		return err
+	}
+
 	sourceId := filepath.Join(s.dir, minionPath, id)
 	acceptedId := filepath.Join(s.dir, minionAcceptPath, id)
 
@@ -362,101 +439,51 @@ func (s *Storage) acceptMinion(id string) error {
 		return err
 	}
 
-	_ = os.Remove(preId)
-
-	deniedId := filepath.Join(s.dir, minionDeniedPath, id)
-	_ = os.Remove(deniedId)
-
-	rejectId := filepath.Join(s.dir, minionRejectPath, id)
-	_ = os.Remove(rejectId)
-	return nil
+	kind, err := parseState(state)
+	if err != nil {
+		return nil
+	}
+	sl := filepath.Join(s.dir, kind)
+	return os.Remove(sl)
 }
 
 func (s *Storage) rejectMinion(id string) error {
-	preId := filepath.Join(s.dir, minionPrePath, id)
-	sourceId := filepath.Join(s.dir, minionPath, id)
-	rejectId := filepath.Join(s.dir, minionRejectPath, id)
-
-	if err := os.Symlink(sourceId, rejectId); err != nil {
+	state, err := s.getUpdate(id)
+	if err != nil {
 		return err
 	}
 
-	_ = os.Remove(preId)
+	sourceId := filepath.Join(s.dir, minionPath, id)
+	rejectId := filepath.Join(s.dir, minionRejectPath, id)
+	if err = os.Symlink(sourceId, rejectId); err != nil {
+		return err
+	}
 
-	autoSignId := filepath.Join(s.dir, minionAutoPath, id)
-	_ = os.Remove(autoSignId)
-
-	acceptId := filepath.Join(s.dir, minionAcceptPath, id)
-	_ = os.Remove(acceptId)
-
-	return nil
+	kind, err := parseState(state)
+	if err != nil {
+		return nil
+	}
+	sl := filepath.Join(s.dir, kind)
+	return os.Remove(sl)
 }
 
 func (s *Storage) deleteMinion(id string) error {
-	preId := filepath.Join(s.dir, minionPrePath, id)
-	exists, err := removeFile(preId)
+	state, err := s.getUpdate(id)
 	if err != nil {
 		return err
 	}
-	if exists {
+	kind, err := parseState(state)
+	if err != nil {
 		return nil
 	}
-
-	acceptedId := filepath.Join(s.dir, minionAcceptPath, id)
-	exists, err = removeFile(acceptedId)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return nil
-	}
-
-	autoSignId := filepath.Join(s.dir, minionAutoPath, id)
-	exists, err = removeFile(autoSignId)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return nil
-	}
-
-	deniedId := filepath.Join(s.dir, minionDeniedPath, id)
-	exists, err = removeFile(deniedId)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return nil
-	}
-
-	rejectId := filepath.Join(s.dir, minionRejectPath, id)
-	exists, err = removeFile(rejectId)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return ErrNotFound
-	}
-
-	return nil
+	sl := filepath.Join(s.dir, kind)
+	return os.Remove(sl)
 }
 
 func walkMinions(root string, state types.MinionState) ([]string, error) {
-	var kind string
-	switch state {
-	case types.Unaccepted:
-		kind = minionPrePath
-	case types.Accepted:
-		kind = minionAcceptPath
-	case types.AutoSign:
-		kind = minionAutoPath
-	case types.Denied:
-		kind = minionDeniedPath
-	case types.Rejected:
-		kind = minionRejectPath
-	default:
-		return nil, fmt.Errorf("%w: %s", ErrInvalidState, state)
+	kind, err := parseState(state)
+	if err != nil {
+		return nil, err
 	}
 	dir := filepath.Join(root, kind)
 	files, err := os.ReadDir(dir)
@@ -470,18 +497,21 @@ func walkMinions(root string, state types.MinionState) ([]string, error) {
 	return minions, nil
 }
 
-func removeFile(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
+func parseState(state types.MinionState) (string, error) {
+	var kind string
+	switch state {
+	case types.Unaccepted:
+		kind = minionPrePath
+	case types.Accepted:
+		kind = minionAcceptPath
+	case types.AutoSign:
+		kind = minionAutoPath
+	case types.Denied:
+		kind = minionDeniedPath
+	case types.Rejected:
+		kind = minionRejectPath
+	default:
+		return "", fmt.Errorf("%w: %s", ErrInvalidState, state)
 	}
-
-	err = os.Remove(path)
-	if err != nil {
-		return true, err
-	}
-	return true, nil
+	return kind, nil
 }

@@ -44,8 +44,6 @@ import (
 	"github.com/vine-io/maco/docs"
 )
 
-type DispatchStream = grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]
-
 type options struct {
 	listener  net.Listener
 	cfg       *Config
@@ -169,7 +167,7 @@ func newInternalHandler(ctx context.Context, cfg *Config, sch *Scheduler) (pb.In
 	return handler, nil
 }
 
-func (h *internalHandler) Dispatch(stream DispatchStream) error {
+func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
 	rsp, err := stream.Recv()
 	if err != nil {
 		if err == io.EOF {

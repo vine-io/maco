@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"go.uber.org/zap"
@@ -41,6 +42,8 @@ var (
 )
 
 type Config struct {
+	once sync.Once
+
 	Listen   string `json:"listen" toml:"listen"`
 	CertFile string `json:"cert-file" toml:"cert-file"`
 	KeyFile  string `json:"key-file" toml:"key-file"`
@@ -66,6 +69,14 @@ func NewConfig() *Config {
 }
 
 func (cfg *Config) Init() error {
+	var err error
+	cfg.once.Do(func() {
+		err = cfg.init()
+	})
+	return err
+}
+
+func (cfg *Config) init() error {
 	if cfg.Log == nil {
 		lc := logutil.NewLogConfig()
 		cfg.Log = &lc

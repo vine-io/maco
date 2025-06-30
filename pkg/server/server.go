@@ -51,6 +51,8 @@ type embedServer struct {
 	done     chan struct{}
 	stop     chan struct{}
 
+	once sync.Once
+
 	wgMu sync.RWMutex
 	wg   sync.WaitGroup
 }
@@ -92,7 +94,9 @@ func (s *embedServer) GoAttach(fn func()) {
 }
 
 func (s *embedServer) Destroy(fn func()) {
-	go s.destroy(fn)
+	s.once.Do(func() {
+		go s.destroy(fn)
+	})
 }
 
 func (s *embedServer) destroy(fn func()) {
