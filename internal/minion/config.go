@@ -21,5 +21,146 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package minion
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
+	"github.com/BurntSushi/toml"
+	"go.uber.org/zap"
+	"sigs.k8s.io/yaml"
+
+	"github.com/vine-io/maco/pkg/logutil"
+)
+
+var (
+	DefaultMasterAddress = "127.0.0.1:4500"
+)
+
 type Config struct {
+	once sync.Once
+
+	// minion id，确认 minion 唯一性，默认为 hostname
+	Name string `json:"name" toml:"name"`
+
+	Master   string `json:"master" toml:"master"`
+	CertFile string `json:"cert-file" toml:"cert-file"`
+	KeyFile  string `json:"key-file" toml:"key-file"`
+	CaFile   string `json:"ca-file" toml:"ca-file"`
+
+	DataRoot string `json:"data_root" toml:"data_root"`
+
+	Log *logutil.LogConfig `json:"log" toml:"log"`
+}
+
+func NewConfig() *Config {
+	lc := logutil.NewLogConfig()
+	hostname, _ := os.Hostname()
+	cfg := &Config{
+		Name:   hostname,
+		Master: DefaultMasterAddress,
+		Log:    &lc,
+	}
+
+	return cfg
+}
+
+func (cfg *Config) Init() error {
+	var err error
+	cfg.once.Do(func() {
+		err = cfg.init()
+	})
+	return err
+}
+
+func (cfg *Config) init() error {
+	if cfg.Log == nil {
+		lc := logutil.NewLogConfig()
+		cfg.Log = &lc
+	}
+	err := cfg.Log.SetupLogging()
+	cfg.Log.SetupGlobalLoggers()
+	if err != nil {
+		return fmt.Errorf("init logger: %w", err)
+	}
+
+	if cfg.Name == "" {
+		cfg.Name, _ = os.Hostname()
+	}
+
+	if cfg.DataRoot == "" {
+		home, _ := os.UserHomeDir()
+		cfg.DataRoot = filepath.Join(home, ".maco")
+		_ = os.MkdirAll(cfg.DataRoot, 0755)
+	} else {
+		_, err := os.Stat(cfg.DataRoot)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("read data root directory: %w", err)
+			}
+			_ = os.MkdirAll(cfg.DataRoot, 0755)
+		}
+		if strings.HasPrefix(cfg.DataRoot, "~") || strings.HasPrefix(cfg.DataRoot, "./") {
+			abs, err := filepath.Abs(cfg.DataRoot)
+			if err != nil {
+				return fmt.Errorf("get data-root abs path: %w", err)
+			}
+			cfg.DataRoot = abs
+		}
+	}
+	return nil
+}
+
+func FromPath(filename string) (*Config, error) {
+	var cfg Config
+	var err error
+	ext := filepath.Ext(filename)
+	switch ext {
+	case ".toml":
+		_, err = toml.DecodeFile(filename, &cfg)
+	case ".yaml", ".yml":
+		err = yaml.Unmarshal([]byte(filename), &cfg)
+	case ".json":
+		err = json.Unmarshal([]byte(filename), &cfg)
+	default:
+		return nil, fmt.Errorf("invalid config format: %s", ext)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+// Save saves config text to specific file path
+func (cfg *Config) Save(filename string) error {
+	var err error
+	var data []byte
+	ext := filepath.Ext(filename)
+	switch ext {
+	case ".toml":
+		buf := bytes.NewBufferString("")
+		err = toml.NewEncoder(buf).Encode(cfg)
+		if err == nil {
+			data = buf.Bytes()
+		}
+	case ".yaml", ".yml":
+		data, err = yaml.Marshal(cfg)
+	case ".json":
+		data, err = json.Marshal(cfg)
+	default:
+		return fmt.Errorf("invalid config format: %s", ext)
+	}
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename, data, 0755)
+}
+
+func (cfg *Config) Logger() *zap.Logger {
+	return cfg.Log.GetLogger()
 }

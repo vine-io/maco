@@ -139,12 +139,37 @@ type macoHandler struct {
 }
 
 func newMacoHandler(ctx context.Context, storage *Storage, sch *Scheduler) (pb.MacoRPCServer, error) {
-	handler := &macoHandler{ctx: ctx}
+	handler := &macoHandler{
+		ctx:     ctx,
+		storage: storage,
+		sch:     sch,
+	}
 	return handler, nil
 }
 
 func (h *macoHandler) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
 	return &pb.PingResponse{Message: "OK"}, nil
+}
+
+func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallResponse, error) {
+	in := &Request{
+		Call: &types.CallRequest{
+			Selector: &types.Selector{
+				Minions: req.Hosts,
+			},
+			Function: req.Function,
+			Args:     req.Args,
+		},
+	}
+	out, err := h.sch.Handle(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	rsp := &pb.CallResponse{
+		Report: out.Report,
+	}
+	return rsp, nil
 }
 
 type internalHandler struct {
@@ -184,14 +209,27 @@ func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRe
 		return status.Errorf(codes.InvalidArgument, "missing connect message")
 	}
 
+	minion := connMsg.Minion
 	p, err := h.sch.addStream(connMsg, stream)
 	if err != nil {
 		return status.Errorf(codes.Internal, "add stream error: %v", err)
 	}
 
+	zap.L().Info("add new pipe",
+		zap.String("id", minion.Name),
+		zap.String("os", minion.Os),
+	)
+
 	err = p.start()
+
+	zap.L().Info("remove new pipe",
+		zap.String("id", minion.Name),
+		zap.String("os", minion.Os),
+	)
+
 	if err != nil {
 		return status.Errorf(codes.Internal, "start stream error: %v", err)
 	}
+
 	return nil
 }

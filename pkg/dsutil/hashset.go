@@ -30,6 +30,7 @@ package dsutil
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // HashSet holds elements in go's native map
@@ -164,4 +165,96 @@ func (set *HashSet[T]) Difference(another *HashSet[T]) *HashSet[T] {
 	}
 
 	return result
+}
+
+// SafeHashSet Concurrent safe HashSet
+type SafeHashSet[T comparable] struct {
+	sync.RWMutex
+	sets *HashSet[T]
+}
+
+func NewSafeHashSet[T comparable]() *SafeHashSet[T] {
+	return &SafeHashSet[T]{sets: NewHashSet[T]()}
+}
+
+func (set *SafeHashSet[T]) Add(items ...T) {
+	set.Lock()
+	defer set.Unlock()
+	set.sets.Add(items...)
+}
+
+func (set *SafeHashSet[T]) Remove(items ...T) {
+	set.Lock()
+	defer set.Unlock()
+	set.sets.Remove(items...)
+}
+
+func (set *SafeHashSet[T]) Contains(items ...T) bool {
+	set.RLock()
+	defer set.RUnlock()
+	return set.sets.Contains(items...)
+}
+
+func (set *SafeHashSet[T]) Empty() bool {
+	set.RLock()
+	defer set.RUnlock()
+	return set.sets.Empty()
+}
+
+func (set *SafeHashSet[T]) Size() int {
+	set.RLock()
+	defer set.RUnlock()
+	return set.sets.Size()
+}
+
+func (set *SafeHashSet[T]) Clear() {
+	set.Lock()
+	defer set.Unlock()
+	set.sets.Clear()
+}
+
+func (set *SafeHashSet[T]) Values() []T {
+	set.RLock()
+	defer set.RUnlock()
+	return set.sets.Values()
+}
+
+func (set *SafeHashSet[T]) String() string {
+	set.RLock()
+	defer set.RUnlock()
+	return set.sets.String()
+}
+
+func (set *SafeHashSet[T]) Intersection(another *SafeHashSet[T]) *SafeHashSet[T] {
+	set.Lock()
+	defer set.Unlock()
+
+	another.Lock()
+	defer another.Unlock()
+
+	intersection := set.sets.Intersection(another.sets)
+	return &SafeHashSet[T]{sets: intersection}
+}
+
+func (set *SafeHashSet[T]) Difference(another *SafeHashSet[T]) *SafeHashSet[T] {
+	set.Lock()
+	defer set.Unlock()
+
+	another.Lock()
+	defer another.Unlock()
+
+	difference := set.sets.Difference(another.sets)
+	return &SafeHashSet[T]{sets: difference}
+}
+
+func (set *SafeHashSet[T]) Union(another *SafeHashSet[T]) *SafeHashSet[T] {
+	set.Lock()
+	defer set.Unlock()
+
+	another.Lock()
+	defer another.Unlock()
+
+	union := set.sets.Union(another.sets)
+	return &SafeHashSet[T]{sets: union}
+
 }

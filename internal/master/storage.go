@@ -79,7 +79,7 @@ type Storage struct {
 	minionCache map[types.MinionState]*dsutil.HashSet[string]
 }
 
-func Open(opt *Options) (*Storage, error) {
+func newStorage(opt *Options) (*Storage, error) {
 	lg := opt.lg
 
 	root := opt.dir
@@ -227,11 +227,13 @@ func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) 
 		}
 
 		name := minion.Name
+		minionRoot := filepath.Join(s.dir, minionPath, name)
+		_ = os.MkdirAll(minionRoot, 0700)
+
 		if err = s.addMinion(name, autoSign); err != nil {
 			return state, err
 		}
 
-		minionRoot := filepath.Join(s.dir, minionPath, name)
 		pubKeyPath := filepath.Join(minionRoot, "minion.pub")
 		if err = os.WriteFile(pubKeyPath, pubKey, 0600); err != nil {
 			return state, err
@@ -423,7 +425,11 @@ func (s *Storage) addMinion(id string, autoSign bool) error {
 	minionId := filepath.Join(s.dir, kind, id)
 	stateId := filepath.Join(minionId, "state")
 	_ = os.WriteFile(stateId, []byte(state), 0600)
-	return os.Symlink(source, minionId)
+	err := os.Symlink(source, minionId)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Storage) acceptMinion(id string) error {
@@ -490,7 +496,7 @@ func walkMinions(root string, state types.MinionState) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	minions := make([]string, 0, len(files))
+	minions := make([]string, len(files))
 	for i, entry := range files {
 		minions[i] = entry.Name()
 	}

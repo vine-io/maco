@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 9d1a50b7e4c85fcc0b4ee4bb3b3faf62b9b8ff56
+    version: 96a0b5b038fbef539100c0b8b0e82eec3c30d5ef
 paths:
     /v1/call:
         get:
@@ -23,6 +23,12 @@ paths:
                   in: query
                   schema:
                     type: string
+                - name: args
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
             responses:
                 "200":
                     description: OK
@@ -46,11 +52,50 @@ components:
     schemas:
         rpc.macopb.CallResponse:
             type: object
-            properties: {}
+            properties:
+                report:
+                    $ref: '#/components/schemas/types.Report'
         rpc.macopb.PingResponse:
             type: object
             properties:
                 message:
+                    type: string
+        types.Report:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/types.ReportItem'
+                summary:
+                    $ref: '#/components/schemas/types.ReportSummary'
+            description: Report Minion 执行结果
+        types.ReportItem:
+            type: object
+            properties:
+                minion:
+                    type: string
+                startTimestamp:
+                    type: string
+                endTimestamp:
+                    type: string
+                result:
+                    type: boolean
+                error:
+                    type: string
+                data:
+                    type: string
+                    format: bytes
+        types.ReportSummary:
+            type: object
+            properties:
+                success:
+                    type: string
+                changes:
+                    type: string
+                failed:
+                    type: string
+                total:
                     type: string
 tags:
     - name: MacoRPC

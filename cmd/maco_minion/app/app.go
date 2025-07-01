@@ -31,21 +31,21 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/vine-io/maco/internal/master"
+	"github.com/vine-io/maco/internal/minion"
 	genericserver "github.com/vine-io/maco/pkg/server"
 	version "github.com/vine-io/maco/pkg/version"
 )
 
-func NewMasterCommand(stdout, stderr io.Writer) *cobra.Command {
+func NewMinionCommand(stdout, stderr io.Writer) *cobra.Command {
 	app := &cobra.Command{
-		Use:     "maco-master",
-		Short:   "the server component of maco system",
+		Use:     "maco-minion",
+		Short:   "the agent component of maco system",
 		Version: version.ReleaseVersion(),
 		PreRunE: func(cmd *cobra.Command, args []string) error { return nil },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			cfg, _ := cmd.Flags().GetString("config")
-			return runMaster(ctx, cfg)
+			return runMinion(ctx, cfg)
 		},
 	}
 
@@ -59,7 +59,7 @@ func NewMasterCommand(stdout, stderr io.Writer) *cobra.Command {
 	var configPath string
 	homeDir, _ := os.UserHomeDir()
 	if homeDir != "" {
-		configPath = filepath.Join(homeDir, ".maco", "master.toml")
+		configPath = filepath.Join(homeDir, ".maco", "minion.toml")
 	}
 
 	flags.StringP("config", "c", configPath, "path to the configuration file")
@@ -76,8 +76,8 @@ func getVersionTemplate() string {
 	return tpl
 }
 
-func runMaster(ctx context.Context, configPath string) error {
-	cfg, err := master.FromPath(configPath)
+func runMinion(ctx context.Context, configPath string) error {
+	cfg, err := minion.FromPath(configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
@@ -85,9 +85,9 @@ func runMaster(ctx context.Context, configPath string) error {
 		return fmt.Errorf("init config: %w", err)
 	}
 
-	app, err := master.NewMaster(cfg)
+	app, err := minion.NewMinion(cfg)
 	if err != nil {
-		return fmt.Errorf("create maco-master server: %w", err)
+		return fmt.Errorf("create maco-minion server: %w", err)
 	}
 
 	ctx = genericserver.SetupSignalContext(ctx)

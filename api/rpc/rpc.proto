@@ -70,11 +70,11 @@ message PingResponse {
 message CallRequest {
   repeated string hosts = 1;
   string function = 2;
-  map<string, types.Value> args = 3;
+  repeated string args = 3;
 }
 
 message CallResponse {
-
+  types.Report report = 1;
 }
 
 service InternalRPC {

@@ -54,30 +54,6 @@ message Grain {
 
 }
 
-// Report Minion 执行结果
-message Report {
-  repeated ReportItem items = 1;
-  ReportSummary summary = 2;
-}
-
-message ReportItem {
-  string minion = 1;
-  int64 startTimestamp = 2;
-  int64 endTimestamp = 3;
-  bool result = 5;
-  bytes data = 6;
-}
-
-message ReportChange {
-
-}
-
-message ReportSummary {
-  int64 success = 1;
-  int64 changes = 2;
-  int64 failed = 3;
-  int64 total = 4;
-}
 
 enum EventType {
   EventUnknown = 0;
@@ -120,41 +96,41 @@ message ConnectResponse {
   bytes masterPublicKey = 2;
 }
 
-enum Op {
-  OpEq = 0;
-  OpGt = 1;
-  OpGte = 2;
-  OpLt = 3;
-  OpLte = 4;
-  OpLike = 5;
-}
-
-enum Logic {
-  LgUnknown = 0;
-  LgAnd = 1; // 逻辑与
-  LgOr = 2; // 逻辑或
-}
-
-// Condition 筛选条件
-message Field {
-  Op op = 1;
-  string query = 2;
-  string value = 3;
-}
-
-// Segment 筛选语句
-message Segment {
-  // 连接逻辑
-  Logic logic = 1;
-  // minion 条件
-  Field minion = 2;
-  // minion grain 条件
-  Field grain = 3;
-}
-
-// Selector minion 筛选器
+//enum Op {
+//  OpEq = 0;
+//  OpGt = 1;
+//  OpGte = 2;
+//  OpLt = 3;
+//  OpLte = 4;
+//  OpLike = 5;
+//}
+//
+//enum Logic {
+//  LgUnknown = 0;
+//  LgAnd = 1; // 逻辑与
+//  LgOr = 2; // 逻辑或
+//}
+//
+//// Condition 筛选条件
+//message Field {
+//  Op op = 1;
+//  string query = 2;
+//  string value = 3;
+//}
+//
+//// Segment 筛选语句
+//message Segment {
+//  // 连接逻辑
+//  Logic logic = 1;
+//  // minion 条件
+//  Field minion = 2;
+//  // minion grain 条件
+//  Field grain = 3;
+//}
+//
+//// Selector minion 筛选器
 message Selector {
-  repeated Field fields = 1;
+  repeated string minions = 1;
 }
 
 message CallRequest {
@@ -165,9 +141,11 @@ message CallRequest {
   // 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
   string function = 3;
   // 方法参数
-  map<string, Value> args = 4;
+  repeated string args = 4;
   // 加密参数
   map<string, Value> pillars = 5;
+  // 请求超时时长
+  int64 timeout = 6;
 }
 
 message CallResponse {
@@ -175,8 +153,38 @@ message CallResponse {
   uint64 id = 1;
   // 任务返回类型
   ResultType type = 2;
-  // 输出结果
-  bytes result = 3;
   // 错误信息
-  string error = 4;
+  string error = 3;
+  // 执行命令的返回码
+  int32 retCode = 4;
+  // 输出结果
+  bytes result = 5;
+  // 修改信息
+  ResultChanges changes = 6;
+}
+
+message ResultChanges {
+
+}
+
+// Report Minion 执行结果
+message Report {
+  repeated ReportItem items = 1;
+  ReportSummary summary = 2;
+}
+
+message ReportItem {
+  string minion = 1;
+  int64 startTimestamp = 2;
+  int64 endTimestamp = 3;
+  bool result = 5;
+  string error = 6;
+  bytes data = 7;
+}
+
+message ReportSummary {
+  int64 success = 1;
+  int64 changes = 2;
+  int64 failed = 3;
+  int64 total = 4;
 }

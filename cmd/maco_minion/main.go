@@ -21,6 +21,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package main
 
-func main() {
+import (
+	"os"
 
+	"github.com/vine-io/maco/cmd/maco_minion/app"
+	"github.com/vine-io/maco/pkg/cliutil"
+)
+
+func main() {
+	cmd := app.NewMinionCommand(os.Stdout, os.Stderr)
+	os.Exit(cliutil.Run(cmd))
 }

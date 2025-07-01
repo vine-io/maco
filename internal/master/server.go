@@ -29,7 +29,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"go.uber.org/zap"
 
@@ -50,10 +49,7 @@ type Master struct {
 
 func NewMaster(cfg *Config) (*Master, error) {
 	lg := cfg.Logger()
-	es := genericserver.NewEmbedServer(cfg.Logger())
-
-	dir := filepath.Join(cfg.DataRoot, "store")
-	lg.Info("open embed database", zap.String("dir", dir))
+	es := genericserver.NewEmbedServer(lg)
 
 	ms := &Master{
 		IEmbedServer: es,
@@ -65,11 +61,8 @@ func NewMaster(cfg *Config) (*Master, error) {
 
 func (ms *Master) Start(ctx context.Context) error {
 
-	zap.L().Info("starting maco server")
-	if err := ms.start(); err != nil {
-		return err
-	}
-	if err := ms.startServer(ctx); err != nil {
+	zap.L().Info("starting maco master")
+	if err := ms.start(ctx); err != nil {
 		return err
 	}
 
@@ -95,23 +88,36 @@ func (ms *Master) stop(ctx context.Context) error {
 func (ms *Master) destroy() {
 }
 
-func (ms *Master) start() error { return nil }
-
-func (ms *Master) startServer(ctx context.Context) error {
+func (ms *Master) start(ctx context.Context) error {
 	cfg := ms.cfg
+	lg := cfg.Logger()
 
 	scheme, ts, err := ms.createListener()
 	if err != nil {
 		return err
 	}
 
-	zap.L().Info("maco-master listening",
+	lg.Info("maco-master listening",
 		zap.String("scheme", scheme),
 		zap.String("addr", ts.Addr().String()))
 
+	sopts := NewOptions(cfg.DataRoot, lg)
+	storage, err := newStorage(sopts)
+	if err != nil {
+		return fmt.Errorf("create storage: %w", err)
+	}
+
+	sche, err := NewScheduler(storage)
+	if err != nil {
+		return fmt.Errorf("create scheduler: %w", err)
+	}
+	go sche.Run(ctx)
+
 	opts := &options{
-		listener: ts,
-		cfg:      cfg,
+		listener:  ts,
+		cfg:       cfg,
+		storage:   storage,
+		scheduler: sche,
 	}
 	hdlr, err := registerRPCHandler(ctx, opts)
 	ms.serve = &http.Server{
