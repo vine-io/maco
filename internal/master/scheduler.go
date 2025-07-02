@@ -29,13 +29,16 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/alphadose/haxmap"
+	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/api/types"
 	"github.com/vine-io/maco/pkg/dsutil"
+	"github.com/vine-io/maco/pkg/pemutil"
 )
 
 type DispatchStream interface {
@@ -56,6 +59,14 @@ type message struct {
 	err error
 	// Call 请求返回的结果
 	call *types.CallResponse
+}
+
+type Request struct {
+	Call *types.CallRequest
+}
+
+type Response struct {
+	Report *types.Report
 }
 
 // This is an application-wide global ID allocator.  Unfortunately we need
@@ -113,26 +124,48 @@ type pipe struct {
 
 	name string
 
+	// master private rsa key
+	rsaPair *pemutil.RsaPair
+
+	// minion public rsa key
+	pubKey []byte
+
 	stream DispatchStream
 	mch    chan<- *message
 
 	stopCh chan struct{}
 }
 
-func newPipe(name string, stream DispatchStream, mch chan<- *message) *pipe {
+func newPipe(name string, pair *pemutil.RsaPair, pubKey []byte, stream DispatchStream, mch chan<- *message) *pipe {
 	p := &pipe{
-		ctx:    stream.Context(),
-		name:   name,
-		stream: stream,
-		mch:    mch,
-		stopCh: make(chan struct{}, 1),
+		ctx:     stream.Context(),
+		name:    name,
+		rsaPair: pair,
+		pubKey:  pubKey,
+		stream:  stream,
+		mch:     mch,
+		stopCh:  make(chan struct{}, 1),
 	}
 
 	return p
 }
 
-func (p *pipe) send(in *pb.DispatchResponse) error {
-	return p.stream.Send(in)
+func (p *pipe) send(in *Request) error {
+	rsp := &pb.DispatchResponse{}
+	if call := in.Call; call != nil {
+		rsp.Type = types.EventType_EventCall
+		b, err := msgpack.Marshal(call)
+		if err != nil {
+			return fmt.Errorf("serialize dispatch message: %w", err)
+		}
+		msg, err := pemutil.EncodeByRSA(b, p.pubKey)
+		if err != nil {
+			return fmt.Errorf("encode dispatch message: %w", err)
+		}
+		rsp.Call = &pb.DispatchCallMsg{Id: call.Id, Data: msg}
+	}
+
+	return p.stream.Send(rsp)
 }
 
 func (p *pipe) start() error {
@@ -153,15 +186,31 @@ func (p *pipe) start() error {
 				p.mch <- &message{name: p.name, done: true}
 				return nil
 			}
-			p.mch <- &message{name: p.name, err: err}
+			p.mch <- &message{name: p.name, err: err, done: true}
 			return err
 		}
 
 		switch req.Type {
 		case types.EventType_EventCall:
-			rsp := req.Call
-			if rsp != nil {
-				p.mch <- &message{id: rsp.Id, name: p.name, call: rsp}
+			msg := req.Call
+			if msg == nil {
+				continue
+			}
+			if len(msg.Error) != 0 {
+				p.mch <- &message{id: msg.Id, name: p.name, done: true}
+				continue
+			}
+			b, dErr := pemutil.DecodeByRSA(msg.Data, p.rsaPair.Private)
+			if dErr != nil {
+				p.mch <- &message{id: msg.Id, name: p.name, err: dErr}
+				continue
+			}
+			callRsp := &types.CallResponse{}
+			err = msgpack.Unmarshal(b, callRsp)
+			if err != nil {
+				p.mch <- &message{id: msg.Id, name: p.name, err: err}
+			} else {
+				p.mch <- &message{id: msg.Id, name: p.name, call: callRsp}
 			}
 		}
 	}
@@ -174,14 +223,6 @@ func (p *pipe) stop() {
 	default:
 		close(p.stopCh)
 	}
-}
-
-type Request struct {
-	Call *types.CallRequest
-}
-
-type Response struct {
-	Report *types.Report
 }
 
 type jobPack struct {
@@ -219,7 +260,7 @@ func (t *task) notify(name string, payload *types.CallResponse) {
 	t.ch <- pack
 }
 
-func (t *task) wait(ctx context.Context) error {
+func (t *task) execute(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -233,7 +274,6 @@ func (t *task) wait(ctx context.Context) error {
 
 			item := &types.ReportItem{
 				Minion: p.name,
-				Result: false,
 				Error:  call.Error,
 				Data:   call.Result,
 			}
@@ -306,24 +346,26 @@ func NewScheduler(storage *Storage) (*Scheduler, error) {
 	return sch, nil
 }
 
-func (s *Scheduler) addStream(in *types.ConnectRequest, stream DispatchStream) (*pipe, error) {
+func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (*pipe, *MinionInfo, error) {
 	name := in.Minion.Name
 
 	s.pmu.RLock()
 	_, exists := s.pipes.Get(name)
 	s.pmu.RUnlock()
 	if exists {
-		return nil, fmt.Errorf("minion %s already exists", name)
+		return nil, nil, fmt.Errorf("minion %s already exists", name)
 	}
 
 	autoSign := true
 	//TODO: 读取配置文件，确认 minion 是否支持自动注册
-	state, err := s.storage.AddMinion(in.Minion, in.MinionPublicKey, autoSign)
+	info, err := s.storage.AddMinion(in.Minion, in.MinionPublicKey, autoSign)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	state := info.State
 
-	p := newPipe(name, stream, s.mch)
+	pair := s.storage.ServerRsa()
+	p := newPipe(name, pair, in.MinionPublicKey, stream, s.mch)
 	s.pmu.Lock()
 	s.pipes.Set(name, p)
 	s.pmu.Unlock()
@@ -334,7 +376,7 @@ func (s *Scheduler) addStream(in *types.ConnectRequest, stream DispatchStream) (
 
 	s.downMinions.Remove(name)
 
-	return p, nil
+	return p, info, nil
 }
 
 func (s *Scheduler) sendTo(name string, req *Request) error {
@@ -353,18 +395,18 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 		return fmt.Errorf("name is not online")
 	}
 
-	rsp := &pb.DispatchResponse{
-		Type: types.EventType_EventCall,
-		Call: req.Call,
-	}
+	in := &Request{Call: req.Call}
 
-	return p.send(rsp)
+	return p.send(in)
 }
 
 func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error) {
 
-	//req.Call.
+	//req.Call
 	in := req.Call
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(in.Timeout)*time.Second)
+	defer cancel()
+
 	report := &types.Report{
 		Items:   make([]*types.ReportItem, 0),
 		Summary: &types.ReportSummary{},
@@ -422,16 +464,13 @@ func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error)
 	s.tmu.Unlock()
 
 	for _, p := range pipes {
-		err := p.send(&pb.DispatchResponse{
-			Type: types.EventType_EventCall,
-			Call: in,
-		})
+		err := p.send(&Request{Call: in})
 		if err != nil {
 			zap.S().Errorf("send msg to %s: %v", p.name, err)
 		}
 	}
 
-	err := t.wait(ctx)
+	err := t.execute(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -453,20 +492,30 @@ func (s *Scheduler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m := <-s.mch:
-			if m.done || m.err != nil {
+			if m.done {
 				s.removePipe(m.name)
 				continue
 			}
 
-			if call := m.call; call != nil {
-				id := call.Id
-				s.tmu.RLock()
-				t, ok := s.taskStore[id]
-				if ok {
-					t.notify(m.name, call)
+			msg := m.call
+			if msg == nil {
+				msg = &types.CallResponse{
+					Id: m.id,
 				}
-				s.tmu.RUnlock()
 			}
+			if m.err != nil {
+				msg.Type = types.ResultType_ResultError
+				msg.Error = m.err.Error()
+			}
+
+			id := m.id
+			s.tmu.RLock()
+			t, ok := s.taskStore[id]
+			if ok {
+				t.notify(m.name, msg)
+			}
+			s.tmu.RUnlock()
+
 		}
 	}
 }

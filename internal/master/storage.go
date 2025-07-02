@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -213,34 +214,42 @@ func (s *Storage) GetMinions(state types.MinionState) ([]string, error) {
 	return minions, nil
 }
 
-func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) (types.MinionState, error) {
+func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) (*MinionInfo, error) {
 	state, err := s.getUpdate(minion.Name)
+
+	info := &MinionInfo{
+		Minion: minion,
+		PubKey: s.pair.Public,
+	}
 	if err != nil {
 		if !errors.Is(err, ErrNotFound) {
-			return "", err
+			return nil, err
 		}
+
+		minion.RegistryTimestamp = time.Now().UnixNano()
 
 		// minion 不存在，创建并保存数据
 		state = types.Unaccepted
 		if autoSign {
 			state = types.AutoSign
 		}
+		info.State = state
 
 		name := minion.Name
 		minionRoot := filepath.Join(s.dir, minionPath, name)
 		_ = os.MkdirAll(minionRoot, 0700)
 
 		if err = s.addMinion(name, autoSign); err != nil {
-			return state, err
+			return info, err
 		}
 
 		pubKeyPath := filepath.Join(minionRoot, "minion.pub")
 		if err = os.WriteFile(pubKeyPath, pubKey, 0600); err != nil {
-			return state, err
+			return info, err
 		}
 
 		if err = s.setUpdate(minion.Name, state); err != nil {
-			return state, err
+			return info, err
 		}
 
 		s.cmu.Lock()
@@ -249,15 +258,16 @@ func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) 
 		s.cmu.Unlock()
 	}
 
+	info.State = state
 	err = s.updateMinion(minion)
-	return state, err
+	return info, err
 }
 
 func (s *Storage) updateMinion(minion *types.Minion) error {
 	minionRoot := filepath.Join(s.dir, minionPath, minion.Name)
 	_ = os.MkdirAll(minionRoot, 0700)
 	minionId := filepath.Join(minionRoot, "minion")
-	data, err := json.Marshal(minion)
+	data, err := json.MarshalIndent(minion, "", " ")
 	if err != nil {
 		return err
 	}
@@ -425,11 +435,13 @@ func (s *Storage) addMinion(id string, autoSign bool) error {
 	minionId := filepath.Join(s.dir, kind, id)
 	stateId := filepath.Join(minionId, "state")
 	_ = os.WriteFile(stateId, []byte(state), 0600)
-	err := os.Symlink(source, minionId)
-	if err != nil {
-		return err
+	if fsutil.FileExists(minionId) {
+		sl, _ := os.Readlink(minionId)
+		if sl == source {
+			return nil
+		}
 	}
-	return nil
+	return os.Symlink(source, minionId)
 }
 
 func (s *Storage) acceptMinion(id string) error {

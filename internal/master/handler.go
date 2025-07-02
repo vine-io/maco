@@ -58,7 +58,7 @@ func registerRPCHandler(ctx context.Context, opt *options) (http.Handler, error)
 	if err != nil {
 		return nil, fmt.Errorf("setup maco handler: %w", err)
 	}
-	internalHl, err := newInternalHandler(ctx, cfg, opt.scheduler)
+	internalHl, err := newInternalHandler(ctx, cfg, opt.storage, opt.scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("setup internal handler: %w", err)
 	}
@@ -152,14 +152,11 @@ func (h *macoHandler) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingRe
 }
 
 func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallResponse, error) {
+	if req.Request.Timeout == 0 {
+		req.Request.Timeout = 10
+	}
 	in := &Request{
-		Call: &types.CallRequest{
-			Selector: &types.Selector{
-				Minions: req.Hosts,
-			},
-			Function: req.Function,
-			Args:     req.Args,
-		},
+		Call: req.Request,
 	}
 	out, err := h.sch.Handle(ctx, in)
 	if err != nil {
@@ -178,21 +175,23 @@ type internalHandler struct {
 	ctx context.Context
 	cfg *Config
 
-	sch *Scheduler
+	storage *Storage
+	sch     *Scheduler
 }
 
-func newInternalHandler(ctx context.Context, cfg *Config, sch *Scheduler) (pb.InternalRPCServer, error) {
+func newInternalHandler(ctx context.Context, cfg *Config, storage *Storage, sch *Scheduler) (pb.InternalRPCServer, error) {
 
 	handler := &internalHandler{
-		ctx: ctx,
-		cfg: cfg,
-		sch: sch,
+		ctx:     ctx,
+		cfg:     cfg,
+		storage: storage,
+		sch:     sch,
 	}
 
 	return handler, nil
 }
 
-func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRequest, pb.DispatchResponse]) error {
+func (h *internalHandler) Dispatch(stream pb.InternalRPC_DispatchServer) error {
 	rsp, err := stream.Recv()
 	if err != nil {
 		if err == io.EOF {
@@ -208,21 +207,36 @@ func (h *internalHandler) Dispatch(stream grpc.BidiStreamingServer[pb.DispatchRe
 	if connMsg == nil {
 		return status.Errorf(codes.InvalidArgument, "missing connect message")
 	}
+	if len(connMsg.MinionPublicKey) == 0 {
+		return status.Errorf(codes.InvalidArgument, "missing minion public key")
+	}
 
 	minion := connMsg.Minion
-	p, err := h.sch.addStream(connMsg, stream)
+	minion.OnlineTimestamp = time.Now().UnixNano()
+	p, info, err := h.sch.AddStream(connMsg, stream)
 	if err != nil {
 		return status.Errorf(codes.Internal, "add stream error: %v", err)
 	}
 
-	zap.L().Info("add new pipe",
+	reply := &pb.DispatchResponse{
+		Type: types.EventType_EventCall,
+		Connect: &types.ConnectResponse{
+			Minion:          info.Minion,
+			MasterPublicKey: h.storage.ServerRsa().Public,
+		},
+	}
+	if err = stream.Send(reply); err != nil {
+		zap.L().Error("reply connect response", zap.Error(err))
+	}
+
+	zap.L().Info("add a new pipe",
 		zap.String("id", minion.Name),
 		zap.String("os", minion.Os),
 	)
 
 	err = p.start()
 
-	zap.L().Info("remove new pipe",
+	zap.L().Info("remove pipe",
 		zap.String("id", minion.Name),
 		zap.String("os", minion.Os),
 	)

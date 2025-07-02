@@ -22,10 +22,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package pemutil
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func generateText(length int) string {
+	b := make([]byte, length)
+	for i := 0; i < length; i++ {
+		b[i] = byte(rand.Intn(256))
+	}
+	return string(b)
+}
 
 func TestRSA(t *testing.T) {
 	_, err := GenerateRSA(1, "")
@@ -41,7 +50,7 @@ func TestRSA(t *testing.T) {
 	assert.True(t, len(pair.Private) != 0)
 	assert.True(t, len(pair.Public) != 0)
 
-	source := "test info"
+	source := generateText(10000)
 	encodeText, err := EncodeByRSA([]byte(source), pair.Public)
 	if err != nil {
 		t.Fatal(err)

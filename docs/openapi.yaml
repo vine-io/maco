@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 96a0b5b038fbef539100c0b8b0e82eec3c30d5ef
+    version: 160ec4138d54964dd69b9c2f900c1ad7f0465508
 paths:
     /v1/call:
         get:
@@ -13,22 +13,34 @@ paths:
                 - MacoRPC
             operationId: MacoRPC_Call
             parameters:
-                - name: hosts
+                - name: request.id
                   in: query
-                  schema:
-                    type: array
-                    items:
-                        type: string
-                - name: function
-                  in: query
+                  description: 请求 id，确认请求唯一值
                   schema:
                     type: string
-                - name: args
+                - name: request.selector.minions
                   in: query
                   schema:
                     type: array
                     items:
                         type: string
+                - name: request.function
+                  in: query
+                  description: '请求方法，使用.分割，确认对应模块下的方法，如: a.b.c'
+                  schema:
+                    type: string
+                - name: request.args
+                  in: query
+                  description: 方法参数
+                  schema:
+                    type: array
+                    items:
+                        type: string
+                - name: request.timeout
+                  in: query
+                  description: 请求超时时长
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK

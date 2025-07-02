@@ -31,13 +31,11 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
 
-	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/api/types"
+	"github.com/vine-io/maco/pkg/client"
 	"github.com/vine-io/maco/pkg/pemutil"
 	genericserver "github.com/vine-io/maco/pkg/server"
 	version "github.com/vine-io/maco/pkg/version"
@@ -46,7 +44,14 @@ import (
 type Minion struct {
 	genericserver.IEmbedServer
 
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	cfg *Config
+
+	rsaPair *pemutil.RsaPair
+
+	masterClient *client.Client
 }
 
 func NewMinion(cfg *Config) (*Minion, error) {
@@ -64,6 +69,8 @@ func NewMinion(cfg *Config) (*Minion, error) {
 func (m *Minion) Start(ctx context.Context) error {
 
 	zap.L().Info("starting maco server")
+
+	m.ctx, m.cancel = context.WithCancel(ctx)
 	if err := m.start(ctx); err != nil {
 		return err
 	}
@@ -72,31 +79,12 @@ func (m *Minion) Start(ctx context.Context) error {
 
 	<-ctx.Done()
 
-	return m.stop(ctx)
+	return m.stop()
 }
 
 func (m *Minion) start(ctx context.Context) error {
 	cfg := m.cfg
 	lg := cfg.Logger()
-
-	target := cfg.Master
-
-	kecp := keepalive.ClientParameters{
-		Time:                time.Second * 10,
-		Timeout:             time.Second * 30,
-		PermitWithoutStream: true,
-	}
-
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithKeepaliveParams(kecp),
-		grpc.WithIdleTimeout(time.Second * 5),
-	}
-	client, err := grpc.NewClient(target, opts...)
-	if err != nil {
-		return err
-	}
-	conn := pb.NewInternalRPCClient(client)
 
 	exists := true
 	root := cfg.DataRoot
@@ -142,6 +130,7 @@ func (m *Minion) start(ctx context.Context) error {
 			return fmt.Errorf("save server public key: %v", err)
 		}
 	}
+	m.rsaPair = pair
 
 	hostname, _ := os.Hostname()
 	node := &types.Minion{
@@ -155,98 +144,118 @@ func (m *Minion) start(ctx context.Context) error {
 		Version:  version.GitTag,
 	}
 
-	go func(ctx context.Context) {
-		callOpts := []grpc.CallOption{}
+	target := cfg.Master
 
-		internal := time.Second * 5
-		timer := time.NewTimer(internal)
-		defer timer.Stop()
+	copts := client.NewOptions(lg, target, m.cfg.DataRoot)
+	masterClient, err := client.NewClient(copts)
+	if err != nil {
+		return fmt.Errorf("connect to maco-master failed: %v", err)
+	}
 
-		for {
-			stream, err := conn.Dispatch(ctx, callOpts...)
-			if err != nil {
-				return
-			}
+	in := &types.ConnectRequest{
+		Minion:          node,
+		MinionPublicKey: pair.Public,
+	}
+	dispatcher, err := masterClient.NewDispatcher(ctx, in)
+	if err != nil {
+		return fmt.Errorf("connect to dispatcher: %v", err)
+	}
 
-			err = stream.Send(&pb.DispatchRequest{
-				Type: types.EventType_EventConnect,
-				Connect: &types.ConnectRequest{
-					Minion:          node,
-					MinionPublicKey: pubBytes,
-				},
-				Call: nil,
-			})
-			if err != nil {
-				lg.Info("dispatch stream error", zap.Error(err))
-			}
-
-			lg.Info("connect to master, waiting for stream receiver")
-
-		LOOP:
-			for {
-				rsp, err := stream.Recv()
-				if err != nil {
-					break LOOP
-				}
-
-				switch rsp.Type {
-				case types.EventType_EventConnect:
-				case types.EventType_EventCall:
-					in := rsp.Call
-					if in == nil {
-						continue
-					}
-
-					shell := fmt.Sprintf("%s", in.Function)
-					for _, arg := range in.Args {
-						shell += " " + arg
-					}
-
-					buf := bytes.NewBufferString("")
-					cmd := exec.CommandContext(ctx, "/bin/bash", "-c", shell)
-					cmd.Stdout = buf
-					cmd.Stderr = buf
-					var e1 error
-					if e1 = cmd.Start(); e1 == nil {
-						e1 = cmd.Wait()
-					}
-
-					callRsp := &types.CallResponse{
-						Id:   in.Id,
-						Type: types.ResultType_ResultOk,
-					}
-
-					callRsp.RetCode = int32(cmd.ProcessState.ExitCode())
-					if e1 != nil {
-						callRsp.Type = types.ResultType_ResultError
-						callRsp.Error = buf.String()
-					} else {
-						callRsp.Result = bytes.TrimSuffix(buf.Bytes(), []byte("\n"))
-					}
-
-					_ = stream.Send(&pb.DispatchRequest{
-						Type: types.EventType_EventCall,
-						Call: callRsp,
-					})
-				}
-			}
-
-			timer.Reset(internal)
-
-			select {
-			case <-ctx.Done():
-			case <-timer.C:
-			}
-
-			lg.Info("reconnecting to master")
-		}
-	}(ctx)
+	go m.dispatch(dispatcher)
 
 	return nil
 }
 
+func (m *Minion) dispatch(dispatcher *client.Dispatcher) {
+	for {
+		event, err := dispatcher.Recv()
+		if err != nil {
+			return
+		}
+
+		if event.Err != nil {
+			continue
+		}
+
+		switch event.EventType {
+		case types.EventType_EventCall:
+			msg := event.Call
+			if msg == nil {
+				continue
+			}
+			in := &types.CallRequest{}
+			b, e1 := pemutil.DecodeByRSA(msg.Data, m.rsaPair.Private)
+			if e1 != nil {
+				event.Err = e1
+			} else {
+				e1 = msgpack.Unmarshal(b, in)
+				event.Err = e1
+			}
+
+			if e1 != nil {
+				reply := &types.CallResponse{
+					Id:    msg.Id,
+					Type:  types.ResultType_ResultError,
+					Error: e1.Error(),
+				}
+				_ = dispatcher.Call(reply)
+				continue
+			}
+
+			if in.Timeout == 0 {
+				in.Timeout = 10
+			}
+			rsp, e1 := runCmd(m.ctx, in)
+			if e1 != nil {
+
+			}
+			_ = dispatcher.Call(rsp)
+		}
+	}
+}
+
+func runCmd(ctx context.Context, in *types.CallRequest) (*types.CallResponse, error) {
+	timeout := time.Duration(in.Timeout) * time.Second
+	callCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	shell := fmt.Sprintf("%s", in.Function)
+	for _, arg := range in.Args {
+		shell += " " + arg
+	}
+
+	buf := bytes.NewBufferString("")
+	cmd := exec.CommandContext(callCtx, "/bin/bash", "-c", shell)
+	cmd.Stdout = buf
+	cmd.Stderr = buf
+	var e1 error
+	if e1 = cmd.Start(); e1 == nil {
+		e1 = cmd.Wait()
+	}
+
+	callRsp := &types.CallResponse{
+		Id:   in.Id,
+		Type: types.ResultType_ResultOk,
+	}
+
+	callRsp.RetCode = int32(cmd.ProcessState.ExitCode())
+	if e1 != nil {
+		callRsp.Type = types.ResultType_ResultError
+		callRsp.Error = buf.String()
+	} else {
+		callRsp.Result = bytes.TrimSuffix(buf.Bytes(), []byte("\n"))
+	}
+
+	return callRsp, e1
+}
+
 func (m *Minion) destroy() {}
 
-func (m *Minion) stop(ctx context.Context) error {
+func (m *Minion) stop() error {
+	m.cancel()
+
+	if err := m.masterClient.Close(); err != nil {
+		return fmt.Errorf("close master client: %v", err)
+	}
 	return nil
 }

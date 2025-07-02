@@ -26,13 +26,11 @@ import (
 	"flag"
 	"fmt"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/vine-io/maco/api/rpc"
+	"github.com/vine-io/maco/api/types"
+	"github.com/vine-io/maco/pkg/client"
 	"github.com/vine-io/maco/pkg/logutil"
 )
 
@@ -49,32 +47,31 @@ func main() {
 
 	target := "192.168.141.128:4550"
 
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithIdleTimeout(time.Second * 15),
-	}
-	conn, err := grpc.NewClient(target, opts...)
+	lg, _ := zap.NewProduction()
+	opts := client.NewOptions(lg, target, "_output")
+	mc, err := client.NewClient(opts)
 	if err != nil {
-		zap.L().Fatal("grpc client error", zap.Error(err))
+		lg.Fatal(err.Error())
+		return
 	}
-
-	client := pb.NewMacoRPCClient(conn)
 
 	ctx := context.Background()
-	in := &pb.CallRequest{}
-	in.Hosts = strings.Split(host, ",")
+	in := &types.CallRequest{
+		Selector: &types.Selector{},
+	}
+	in.Selector.Minions = strings.Split(host, ",")
 	shellParts := strings.Split(shell, " ")
 	in.Function = shellParts[0]
 	if len(shellParts) > 1 {
 		in.Args = shellParts[1:]
 	}
 
-	out, err := client.Call(ctx, in)
+	out, err := mc.Call(ctx, in)
 	if err != nil {
-		zap.L().Fatal("call error", zap.Error(err))
+		lg.Fatal("call error", zap.Error(err))
 	}
 
-	for _, item := range out.Report.Items {
+	for _, item := range out.Items {
 		fmt.Printf("%s:\n", item.Minion)
 		if item.Result {
 			fmt.Printf("    %s\n", string(item.Data))

@@ -40,18 +40,18 @@ service MacoRPC {
       get: "/v1/ping"
     };
 
-//    option (openapi.v3.operation) = {
-//      security: [
-//        {
-//          additional_properties: {
-//            name: "bearerAuth",
-//            value: {
-//              value: ["User:register"],
-//            }
-//          }
-//        }
-//      ]
-//    };
+    //    option (openapi.v3.operation) = {
+    //      security: [
+    //        {
+    //          additional_properties: {
+    //            name: "bearerAuth",
+    //            value: {
+    //              value: ["User:register"],
+    //            }
+    //          }
+    //        }
+    //      ]
+    //    };
   }
 
   rpc Call(CallRequest) returns (CallResponse) {
@@ -68,9 +68,7 @@ message PingResponse {
 }
 
 message CallRequest {
-  repeated string hosts = 1;
-  string function = 2;
-  repeated string args = 3;
+  types.CallRequest request = 1;
 }
 
 message CallResponse {
@@ -81,14 +79,20 @@ service InternalRPC {
   rpc Dispatch(stream DispatchRequest) returns (stream DispatchResponse);
 }
 
+message DispatchCallMsg {
+  uint64 id = 1;
+  bytes data = 2;
+  string error = 3;
+}
+
 message DispatchRequest {
   types.EventType type = 1;
   types.ConnectRequest connect = 2;
-  types.CallResponse call = 3;
+  DispatchCallMsg call = 3;
 }
 
 message DispatchResponse {
   types.EventType type = 1;
   types.ConnectResponse connect = 2;
-  types.CallRequest call = 3;
+  DispatchCallMsg call = 3;
 }

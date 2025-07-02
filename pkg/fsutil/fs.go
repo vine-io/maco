@@ -39,3 +39,9 @@ func LoadDir(path string) error {
 	}
 	return nil
 }
+
+// FileExists checks specified pathname does exist
+func FileExists(path string) bool {
+	stat, _ := os.Stat(path)
+	return stat != nil
+}

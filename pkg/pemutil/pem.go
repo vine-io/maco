@@ -26,6 +26,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 )
 
@@ -75,27 +76,88 @@ func GenerateRSA(bits int, logo string) (*RsaPair, error) {
 	return pair, nil
 }
 
-func EncodeByRSA(text, publicKey []byte) ([]byte, error) {
+// EncodeByRSA 使用RSA公钥加密数据，支持长文本分段加密
+func EncodeByRSA(plaintext, publicKey []byte) ([]byte, error) {
+	// 解析PEM格式公钥
 	block, _ := pem.Decode(publicKey)
-	if block == nil {
-		return nil, fmt.Errorf("invalid public key")
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, errors.New("invalid PEM format or key type")
 	}
+
+	// 兼容解析PKIX和PKCS1格式公钥
 	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		// 尝试PKCS1格式解析
+		if pub, err2 := x509.ParsePKCS1PublicKey(block.Bytes); err2 == nil {
+			return encryptChunks(pub, plaintext)
+		}
+		return nil, fmt.Errorf("failed to parse public key: %v", err)
 	}
-	pub := pubInterface.(*rsa.PublicKey)
-	return rsa.EncryptPKCS1v15(rand.Reader, pub, text)
+
+	pub, ok := pubInterface.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
+	}
+	return encryptChunks(pub, plaintext)
 }
 
-func DecodeByRSA(text, priKey []byte) ([]byte, error) {
-	block, _ := pem.Decode(priKey)
+// DecodeByRSA 使用RSA私钥解密数据
+func DecodeByRSA(ciphertext, privateKey []byte) ([]byte, error) {
+	block, _ := pem.Decode(privateKey)
 	if block == nil {
-		return nil, fmt.Errorf("invalid private key")
+		return nil, errors.New("invalid PEM data")
 	}
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
+
+	// 支持PKCS1和PKCS8格式私钥
+	var priv *rsa.PrivateKey
+	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		priv = key
+	} else if key2, err2 := x509.ParsePKCS8PrivateKey(block.Bytes); err2 == nil {
+		rsaKey, ok := key2.(*rsa.PrivateKey)
+		if !ok {
+			return nil, errors.New("not an RSA private key")
+		}
+		priv = rsaKey
+	} else {
+		return nil, fmt.Errorf("unsupported private key format: %v", err)
 	}
-	return rsa.DecryptPKCS1v15(rand.Reader, priv, text)
+
+	// 计算最大解密块大小
+	chunkSize := priv.Size()
+	var plaintext []byte
+
+	for offset := 0; offset < len(ciphertext); offset += chunkSize {
+		end := offset + chunkSize
+		if end > len(ciphertext) {
+			end = len(ciphertext)
+		}
+
+		chunk, err := rsa.DecryptPKCS1v15(rand.Reader, priv, ciphertext[offset:end])
+		if err != nil {
+			return nil, fmt.Errorf("decryption failed at offset %d: %v", offset, err)
+		}
+		plaintext = append(plaintext, chunk...)
+	}
+	return plaintext, nil
+}
+
+// encryptChunks 分段加密处理（解决RSA加密长度限制）
+func encryptChunks(pub *rsa.PublicKey, data []byte) ([]byte, error) {
+	// 计算单次加密最大长度（PKCS1v15填充占用11字节）
+	maxChunkSize := pub.Size() - 11
+	var ciphertext []byte
+
+	for offset := 0; offset < len(data); offset += maxChunkSize {
+		end := offset + maxChunkSize
+		if end > len(data) {
+			end = len(data)
+		}
+
+		chunk, err := rsa.EncryptPKCS1v15(rand.Reader, pub, data[offset:end])
+		if err != nil {
+			return nil, fmt.Errorf("encryption failed at offset %d: %v", offset, err)
+		}
+		ciphertext = append(ciphertext, chunk...)
+	}
+	return ciphertext, nil
 }
