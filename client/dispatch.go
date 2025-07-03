@@ -66,7 +66,7 @@ type Dispatcher struct {
 	done chan struct{}
 }
 
-func (c *Client) NewDispatcher(ctx context.Context, req *types.ConnectRequest) (*Dispatcher, *types.Minion, error) {
+func (c *Client) NewDispatcher(ctx context.Context, req *types.ConnectRequest, dataRoot string) (*Dispatcher, *types.Minion, error) {
 	opts := c.buildCallOptions()
 
 	connected := &atomic.Bool{}
@@ -85,7 +85,7 @@ func (c *Client) NewDispatcher(ctx context.Context, req *types.ConnectRequest) (
 	if err != nil {
 		return nil, nil, err
 	}
-	pubKey := filepath.Join(c.opt.DataRoot, "master")
+	pubKey := filepath.Join(dataRoot, "master")
 	_ = os.WriteFile(pubKey, rsp.MasterPublicKey, 0600)
 
 	go dispatcher.process()

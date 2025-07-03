@@ -20,3 +20,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 package app
+
+import (
+	"io"
+
+	"github.com/spf13/cobra"
+)
+
+func newKeyCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
+	app := &cobra.Command{
+		Use:   "key",
+		Short: "manages Maco authentication keys",
+		RunE:  runListMinionCommand,
+	}
+
+	return app
+}
+
+func runListMinionCommand(cmd *cobra.Command, args []string) error {
+	return nil
+}

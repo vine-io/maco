@@ -45,7 +45,6 @@ type Options struct {
 	Logger *zap.Logger
 
 	Target         string
-	DataRoot       string
 	DialTimeout    time.Duration
 	RequestTimeout time.Duration
 
@@ -54,11 +53,10 @@ type Options struct {
 	masterPubKey []byte
 }
 
-func NewOptions(lg *zap.Logger, target, dataRoot string) *Options {
+func NewOptions(lg *zap.Logger, target string) *Options {
 	opts := &Options{
 		Logger:         lg,
 		Target:         target,
-		DataRoot:       dataRoot,
 		DialTimeout:    DefaultTimeout,
 		RequestTimeout: DefaultTimeout,
 	}

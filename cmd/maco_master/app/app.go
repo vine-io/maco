@@ -27,7 +27,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -39,7 +38,7 @@ import (
 func NewMasterCommand(stdout, stderr io.Writer) *cobra.Command {
 	app := &cobra.Command{
 		Use:     "maco-master",
-		Short:   "the server component of maco system",
+		Short:   "the master component of maco system",
 		Version: version.ReleaseVersion(),
 		PreRunE: func(cmd *cobra.Command, args []string) error { return nil },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,7 +50,7 @@ func NewMasterCommand(stdout, stderr io.Writer) *cobra.Command {
 
 	app.SetOut(stdout)
 	app.SetErr(stderr)
-	app.SetVersionTemplate(getVersionTemplate())
+	app.SetVersionTemplate(version.GetVersionTemplate())
 
 	app.ResetFlags()
 	flags := app.PersistentFlags()
@@ -62,18 +61,9 @@ func NewMasterCommand(stdout, stderr io.Writer) *cobra.Command {
 		configPath = filepath.Join(homeDir, ".maco", "master.toml")
 	}
 
-	flags.StringP("config", "c", configPath, "path to the configuration file")
+	flags.StringP("config", "C", configPath, "path to the configuration file")
 
 	return app
-}
-
-func getVersionTemplate() string {
-	var tpl string
-	tpl += fmt.Sprintf("maco Version: %s\n", version.GitTag)
-	tpl += fmt.Sprintf("Git SHA: %s\n", version.GitCommit)
-	tpl += fmt.Sprintf("Go Version: %s\n", runtime.Version())
-	tpl += fmt.Sprintf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	return tpl
 }
 
 func runMaster(ctx context.Context, configPath string) error {

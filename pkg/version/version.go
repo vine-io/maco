@@ -58,3 +58,12 @@ func GoV() string {
 	}
 	return v
 }
+
+func GetVersionTemplate() string {
+	var tpl string
+	tpl += fmt.Sprintf("maco Version: %s\n", GitTag)
+	tpl += fmt.Sprintf("Git SHA: %s\n", GitCommit)
+	tpl += fmt.Sprintf("Go Version: %s\n", runtime.Version())
+	tpl += fmt.Sprintf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	return tpl
+}
