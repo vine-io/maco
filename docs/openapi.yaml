@@ -5,40 +5,37 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 160ec4138d54964dd69b9c2f900c1ad7f0465508
+    version: 76b5ad475f8bc5f3a857ee74d9810153e8e956d2
 paths:
     /v1/call:
-        get:
+        post:
             tags:
                 - MacoRPC
             operationId: MacoRPC_Call
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rpc.macopb.CallRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.CallResponse'
+            security:
+                - bearerAuth: []
+    /v1/minion/{name}:
+        get:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_GetMinion
             parameters:
-                - name: request.id
-                  in: query
-                  description: 请求 id，确认请求唯一值
-                  schema:
-                    type: string
-                - name: request.selector.minions
-                  in: query
-                  schema:
-                    type: array
-                    items:
-                        type: string
-                - name: request.function
-                  in: query
-                  description: '请求方法，使用.分割，确认对应模块下的方法，如: a.b.c'
-                  schema:
-                    type: string
-                - name: request.args
-                  in: query
-                  description: 方法参数
-                  schema:
-                    type: array
-                    items:
-                        type: string
-                - name: request.timeout
-                  in: query
-                  description: 请求超时时长
+                - name: name
+                  in: path
+                  required: true
                   schema:
                     type: string
             responses:
@@ -47,7 +44,90 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rpc.macopb.CallResponse'
+                                $ref: '#/components/schemas/rpc.macopb.GetMinionResponse'
+            security:
+                - bearerAuth: []
+    /v1/minions:
+        get:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_ListMinions
+            parameters:
+                - name: stateList
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.ListMinionsResponse'
+            security:
+                - bearerAuth: []
+    /v1/minions/action/accept:
+        post:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_AcceptMinion
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rpc.macopb.AcceptMinionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.AcceptMinionResponse'
+            security:
+                - bearerAuth: []
+    /v1/minions/action/delete:
+        post:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_DeleteMinion
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rpc.macopb.DeleteMinionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.DeleteMinionResponse'
+            security:
+                - bearerAuth: []
+    /v1/minions/action/reject:
+        post:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_RejectMinion
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rpc.macopb.RejectMinionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.RejectMinionResponse'
+            security:
+                - bearerAuth: []
     /v1/ping:
         get:
             tags:
@@ -62,16 +142,159 @@ paths:
                                 $ref: '#/components/schemas/rpc.macopb.PingResponse'
 components:
     schemas:
+        rpc.macopb.AcceptMinionRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                all:
+                    type: boolean
+                includeRejected:
+                    type: boolean
+                includeDenied:
+                    type: boolean
+        rpc.macopb.AcceptMinionResponse:
+            type: object
+            properties:
+                minions:
+                    type: array
+                    items:
+                        type: string
+        rpc.macopb.CallRequest:
+            type: object
+            properties:
+                request:
+                    $ref: '#/components/schemas/types.CallRequest'
         rpc.macopb.CallResponse:
             type: object
             properties:
                 report:
                     $ref: '#/components/schemas/types.Report'
-        rpc.macopb.PingResponse:
+        rpc.macopb.DeleteMinionRequest:
             type: object
             properties:
-                message:
+                name:
                     type: string
+                all:
+                    type: boolean
+        rpc.macopb.DeleteMinionResponse:
+            type: object
+            properties:
+                minions:
+                    type: array
+                    items:
+                        type: string
+        rpc.macopb.GetMinionResponse:
+            type: object
+            properties:
+                minion:
+                    $ref: '#/components/schemas/types.Minion'
+                state:
+                    type: string
+        rpc.macopb.ListMinionsResponse:
+            type: object
+            properties:
+                unaccepted:
+                    type: array
+                    items:
+                        type: string
+                accepted:
+                    type: array
+                    items:
+                        type: string
+                autoSign:
+                    type: array
+                    items:
+                        type: string
+                denied:
+                    type: array
+                    items:
+                        type: string
+                rejected:
+                    type: array
+                    items:
+                        type: string
+        rpc.macopb.PingResponse:
+            type: object
+            properties: {}
+        rpc.macopb.RejectMinionRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                all:
+                    type: boolean
+                includeAccepted:
+                    type: boolean
+                includeDenied:
+                    type: boolean
+        rpc.macopb.RejectMinionResponse:
+            type: object
+            properties:
+                minions:
+                    type: array
+                    items:
+                        type: string
+        types.CallRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 请求 id，确认请求唯一值
+                selector:
+                    allOf:
+                        - $ref: '#/components/schemas/types.Selector'
+                    description: 筛选符合的 minion
+                function:
+                    type: string
+                    description: '请求方法，使用.分割，确认对应模块下的方法，如: a.b.c'
+                args:
+                    type: array
+                    items:
+                        type: string
+                    description: 方法参数
+                pillars:
+                    type: object
+                    additionalProperties:
+                        $ref: '#/components/schemas/types.Value'
+                    description: 加密参数
+                timeout:
+                    type: string
+                    description: 请求超时时长
+        types.Minion:
+            type: object
+            properties:
+                name:
+                    type: string
+                uid:
+                    type: string
+                ip:
+                    type: string
+                hostname:
+                    type: string
+                tags:
+                    type: object
+                    additionalProperties:
+                        type: string
+                os:
+                    type: string
+                    description: operation system
+                arch:
+                    type: string
+                    description: cpu architecture
+                version:
+                    type: string
+                    description: the version of minion
+                registryTimestamp:
+                    type: string
+                    description: registry time
+                onlineTimestamp:
+                    type: string
+                    description: the timestamp of minion connects to server
+                offlineTimestamp:
+                    type: string
+                    description: the timestamp of minion offline
+            description: Minion defines the base information of maco-minion
         types.Report:
             type: object
             properties:
@@ -108,6 +331,55 @@ components:
                 failed:
                     type: string
                 total:
+                    type: string
+        types.Selector:
+            type: object
+            properties:
+                minions:
+                    type: array
+                    items:
+                        type: string
+            description: |-
+                enum Op {
+                  OpEq = 0;
+                  OpGt = 1;
+                  OpGte = 2;
+                  OpLt = 3;
+                  OpLte = 4;
+                  OpLike = 5;
+                }
+
+                enum Logic {
+                  LgUnknown = 0;
+                  LgAnd = 1; // 逻辑与
+                  LgOr = 2; // 逻辑或
+                }
+
+                // Condition 筛选条件
+                message Field {
+                  Op op = 1;
+                  string query = 2;
+                  string value = 3;
+                }
+
+                // Segment 筛选语句
+                message Segment {
+                  // 连接逻辑
+                  Logic logic = 1;
+                  // minion 条件
+                  Field minion = 2;
+                  // minion grain 条件
+                  Field grain = 3;
+                }
+
+                // Selector minion 筛选器
+        types.Value:
+            type: object
+            properties:
+                type:
+                    type: integer
+                    format: enum
+                data:
                     type: string
 tags:
     - name: MacoRPC

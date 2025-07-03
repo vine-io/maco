@@ -32,6 +32,7 @@ import (
 
 	"go.uber.org/zap"
 
+	apiErr "github.com/vine-io/maco/api/errors"
 	"github.com/vine-io/maco/api/types"
 	"github.com/vine-io/maco/pkg/dsutil"
 	"github.com/vine-io/maco/pkg/fsutil"
@@ -45,11 +46,6 @@ const (
 	minionPrePath    = "minions_pre"
 	minionDeniedPath = "minions_denied"
 	minionRejectPath = "minions_rejected"
-)
-
-var (
-	ErrNotFound     = errors.New("not found")
-	ErrInvalidState = fmt.Errorf("invalid state")
 )
 
 type MinionInfo struct {
@@ -121,17 +117,17 @@ func newStorage(opt *Options) (*Storage, error) {
 			return nil, err
 		}
 
-		lg.Info("generate master pki",
+		lg.Info("generate master rsa pair",
 			zap.String("private", pem),
 			zap.String("public", pub))
 
 		err = os.WriteFile(pem, pair.Private, 0600)
 		if err != nil {
-			return nil, fmt.Errorf("save server private key: %v", err)
+			return nil, fmt.Errorf("save master private key: %w", err)
 		}
 		err = os.WriteFile(pub, pair.Public, 0600)
 		if err != nil {
-			return nil, fmt.Errorf("save server public key: %v", err)
+			return nil, fmt.Errorf("save master public key: %w", err)
 		}
 	}
 
@@ -203,35 +199,51 @@ func (s *Storage) GetMinions(state types.MinionState) ([]string, error) {
 
 	sets, ok := s.minionCache[state]
 	if !ok {
-		return nil, ErrNotFound
+		return nil, apiErr.NewBadRequest("minion not found")
 	}
 
 	minions := sets.Values()
 	if len(minions) == 0 {
-		return nil, ErrNotFound
+		return nil, apiErr.NewBadRequest("minion not found")
 	}
 
 	return minions, nil
 }
 
-func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) (*MinionInfo, error) {
-	state, err := s.getUpdate(minion.Name)
+func (s *Storage) ListMinions() []string {
+	s.cmu.Lock()
+	defer s.cmu.Unlock()
 
+	minions := make([]string, 0)
+	for _, set := range s.minionCache {
+		for _, minion := range set.Values() {
+			minions = append(minions, minion)
+		}
+	}
+	return minions
+}
+
+func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign, autoDenied bool) (*MinionInfo, error) {
 	info := &MinionInfo{
 		Minion: minion,
 		PubKey: s.pair.Public,
 	}
+
+	state, err := s.getUpdate(minion.Name)
 	if err != nil {
-		if !errors.Is(err, ErrNotFound) {
+		if !apiErr.IsNotFound(err) {
 			return nil, err
 		}
 
-		minion.RegistryTimestamp = time.Now().UnixNano()
+		minion.RegistryTimestamp = time.Now().Unix()
 
 		// minion 不存在，创建并保存数据
 		state = types.Unaccepted
 		if autoSign {
 			state = types.AutoSign
+		}
+		if autoDenied {
+			state = types.Denied
 		}
 		info.State = state
 
@@ -239,7 +251,7 @@ func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign bool) 
 		minionRoot := filepath.Join(s.dir, minionPath, name)
 		_ = os.MkdirAll(minionRoot, 0700)
 
-		if err = s.addMinion(name, autoSign); err != nil {
+		if err = s.addMinion(name, autoSign, autoDenied); err != nil {
 			return info, err
 		}
 
@@ -271,7 +283,7 @@ func (s *Storage) updateMinion(minion *types.Minion) error {
 	if err != nil {
 		return err
 	}
-	if err = os.WriteFile(minionId, data, 0600); err != nil {
+	if err = fsutil.Echo(minionId, data, 0600); err != nil {
 		return err
 	}
 
@@ -280,28 +292,27 @@ func (s *Storage) updateMinion(minion *types.Minion) error {
 
 func (s *Storage) setUpdate(name string, state types.MinionState) error {
 	filename := filepath.Join(s.dir, minionPath, name, "state")
-	return os.WriteFile(filename, []byte(state), 0600)
+	data := []byte(state)
+	return fsutil.Echo(filename, data, 0600)
 }
 
 func (s *Storage) getUpdate(name string) (types.MinionState, error) {
-	data, err := os.ReadFile(filepath.Join(s.dir, minionPath, name, "state"))
+	data, err := fsutil.Cat(filepath.Join(s.dir, minionPath, name, "state"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return "", ErrNotFound
+			return "", apiErr.NewNotFound("minion not found")
 		}
 		return "", err
 	}
 	return types.MinionState(data), nil
 }
 
-func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
-	info := &MinionInfo{}
-
+func (s *Storage) getMinion(name string) (*types.Minion, error) {
 	root := filepath.Join(s.dir, minionPath, name)
-	data, err := os.ReadFile(root)
+	data, err := fsutil.Cat(filepath.Join(root, "minion"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, ErrNotFound
+			return nil, apiErr.NewNotFound("minion not found")
 		}
 		return nil, err
 	}
@@ -309,10 +320,21 @@ func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
 	if err = json.Unmarshal(data, &minion); err != nil {
 		return nil, err
 	}
+	return &minion, nil
+}
+
+func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
+	info := &MinionInfo{}
+
+	root := filepath.Join(s.dir, minionPath, name)
+	minion, err := s.getMinion(name)
+	if err != nil {
+		return nil, err
+	}
 	pubKey, err := os.ReadFile(filepath.Join(root, "minion.pub"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, ErrNotFound
+			return nil, apiErr.NewNotFound("minion not found")
 		}
 		return nil, err
 	}
@@ -321,7 +343,7 @@ func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
 		return nil, err
 	}
 
-	info.Minion = &minion
+	info.Minion = minion
 	info.PubKey = pubKey
 	info.State = types.MinionState(stateByte)
 
@@ -356,7 +378,7 @@ func (s *Storage) AcceptMinion(name string, includeRejected, includeDenied bool)
 	s.cmu.RUnlock()
 
 	if !exists {
-		return ErrNotFound
+		return apiErr.NewNotFound("minion not found")
 	}
 
 	s.cmu.Lock()
@@ -366,7 +388,7 @@ func (s *Storage) AcceptMinion(name string, includeRejected, includeDenied bool)
 	return s.acceptMinion(name)
 }
 
-func (s *Storage) RejectMinion(name string, includeAccepted bool) error {
+func (s *Storage) RejectMinion(name string, includeAccepted, includeDenied bool) error {
 	var exists bool
 
 	s.cmu.Lock()
@@ -389,11 +411,18 @@ func (s *Storage) RejectMinion(name string, includeAccepted bool) error {
 				}
 			}
 		}
+		if includeDenied {
+			sets = s.minionCache[types.Denied]
+			exists = sets.Contains(name)
+			if exists {
+				sets.Remove(name)
+			}
+		}
 	}
 	s.cmu.Unlock()
 
 	if !exists {
-		return ErrNotFound
+		return apiErr.NewNotFound("minion not found")
 	}
 
 	s.cmu.Lock()
@@ -422,13 +451,17 @@ func (s *Storage) DeleteMinion(name string) error {
 	return os.RemoveAll(minionRoot)
 }
 
-func (s *Storage) addMinion(id string, autoSign bool) error {
+func (s *Storage) addMinion(id string, autoSign, autoDenied bool) error {
 
 	state := types.Unaccepted
 	kind := minionPrePath
 	if autoSign {
 		state = types.AutoSign
 		kind = minionAutoPath
+	}
+	if autoDenied {
+		state = types.Denied
+		kind = minionDeniedPath
 	}
 
 	source := filepath.Join(s.dir, minionPath, id)
@@ -529,7 +562,7 @@ func parseState(state types.MinionState) (string, error) {
 	case types.Rejected:
 		kind = minionRejectPath
 	default:
-		return "", fmt.Errorf("%w: %s", ErrInvalidState, state)
+		return "", apiErr.NewBadRequest("unknown minion state")
 	}
 	return kind, nil
 }

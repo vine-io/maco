@@ -39,32 +39,169 @@ service MacoRPC {
     option (google.api.http) = {
       get: "/v1/ping"
     };
+  }
 
-    //    option (openapi.v3.operation) = {
-    //      security: [
-    //        {
-    //          additional_properties: {
-    //            name: "bearerAuth",
-    //            value: {
-    //              value: ["User:register"],
-    //            }
-    //          }
-    //        }
-    //      ]
-    //    };
+  rpc ListMinions(ListMinionsRequest) returns (ListMinionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/minions"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
+    };
+  };
+
+  rpc GetMinion(GetMinionRequest) returns (GetMinionResponse) {
+    option (google.api.http) = {
+      get: "/v1/minion/{name}"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
+    };
+  };
+
+  rpc AcceptMinion(AcceptMinionRequest) returns (AcceptMinionResponse) {
+    option (google.api.http) = {
+      post: "/v1/minions/action/accept"
+      body: "*"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
+    };
+  }
+
+  rpc RejectMinion(RejectMinionRequest) returns (RejectMinionResponse) {
+    option (google.api.http) = {
+      post: "/v1/minions/action/reject"
+      body: "*"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
+    };
+  }
+
+  rpc DeleteMinion(DeleteMinionRequest) returns (DeleteMinionResponse) {
+    option (google.api.http) = {
+      post: "/v1/minions/action/delete"
+      body: "*"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
+    };
   }
 
   rpc Call(CallRequest) returns (CallResponse) {
     option (google.api.http) = {
-      get: "/v1/call"
+      post: "/v1/call"
+      body: "*"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
     };
   };
 }
 
 message PingRequest {}
 
-message PingResponse {
-  string message = 1;
+message PingResponse {}
+
+message ListMinionsRequest {
+  repeated string stateList = 1;
+}
+
+message ListMinionsResponse {
+  repeated string unaccepted = 1;
+  repeated string accepted = 2;
+  repeated string autoSign = 3;
+  repeated string denied = 4;
+  repeated string rejected = 5;
+}
+
+message GetMinionRequest {
+  string name = 1;
+}
+
+message GetMinionResponse {
+  types.Minion minion = 1;
+  string state = 2;
+}
+
+message AcceptMinionRequest {
+  string name = 1;
+  bool all = 2;
+  bool includeRejected = 3;
+  bool includeDenied = 4;
+}
+
+message AcceptMinionResponse {
+  repeated string minions = 1;
+}
+
+message RejectMinionRequest {
+  string name = 1;
+  bool all = 2;
+  bool includeAccepted = 3;
+  bool includeDenied = 4;
+}
+
+message RejectMinionResponse {
+  repeated string minions = 1;
+}
+
+message DeleteMinionRequest {
+  string name = 1;
+  bool all = 2;
+}
+
+message DeleteMinionResponse {
+  repeated string minions = 1;
 }
 
 message CallRequest {

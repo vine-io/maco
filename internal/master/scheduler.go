@@ -35,6 +35,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 
+	apiErr "github.com/vine-io/maco/api/errors"
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/api/types"
 	"github.com/vine-io/maco/pkg/dsutil"
@@ -356,9 +357,10 @@ func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (
 		return nil, nil, fmt.Errorf("minion %s already exists", name)
 	}
 
-	autoSign := true
+	autoSign := false
+	autoDenied := true
 	//TODO: 读取配置文件，确认 minion 是否支持自动注册
-	info, err := s.storage.AddMinion(in.Minion, in.MinionPublicKey, autoSign)
+	info, err := s.storage.AddMinion(in.Minion, in.MinionPublicKey, autoSign, autoDenied)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -422,7 +424,7 @@ func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error)
 		targets = in.Selector.Minions
 	}
 	if len(targets) == 0 {
-		return nil, fmt.Errorf("no targets")
+		return nil, apiErr.NewBadRequest("no targets")
 	}
 
 	total := uint32(0)
@@ -455,7 +457,7 @@ func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error)
 	}
 
 	if len(pipes) == 0 {
-		return nil, fmt.Errorf("no available minions")
+		return nil, apiErr.NewBadRequest("no available minions")
 	}
 
 	t := newTask(nextId, total, report)
@@ -530,4 +532,9 @@ func (s *Scheduler) removePipe(name string) {
 	s.pmu.Unlock()
 
 	s.downMinions.Add(name)
+	minion, _ := s.storage.getMinion(name)
+	if minion != nil {
+		minion.OfflineTimestamp = time.Now().Unix()
+		_ = s.storage.updateMinion(minion)
+	}
 }

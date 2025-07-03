@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package fsutil
 
 import (
+	"bytes"
 	"os"
 )
 
@@ -44,4 +45,26 @@ func LoadDir(path string) error {
 func FileExists(path string) bool {
 	stat, _ := os.Stat(path)
 	return stat != nil
+}
+
+func Cat(filename string) ([]byte, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	if bytes.HasSuffix(data, []byte("\n")) {
+		data = bytes.TrimSuffix(data, []byte("\n"))
+	}
+	return data, nil
+}
+
+func Echo(filename string, data []byte, mode os.FileMode) error {
+	if !bytes.HasSuffix(data, []byte("\n")) {
+		data = append(data, '\n')
+	}
+	err := os.WriteFile(filename, data, mode)
+	if err != nil {
+		return err
+	}
+	return nil
 }

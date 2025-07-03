@@ -91,7 +91,7 @@ func EncodeByRSA(plaintext, publicKey []byte) ([]byte, error) {
 		if pub, err2 := x509.ParsePKCS1PublicKey(block.Bytes); err2 == nil {
 			return encryptChunks(pub, plaintext)
 		}
-		return nil, fmt.Errorf("failed to parse public key: %v", err)
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
 	}
 
 	pub, ok := pubInterface.(*rsa.PublicKey)
@@ -119,7 +119,7 @@ func DecodeByRSA(ciphertext, privateKey []byte) ([]byte, error) {
 		}
 		priv = rsaKey
 	} else {
-		return nil, fmt.Errorf("unsupported private key format: %v", err)
+		return nil, fmt.Errorf("unsupported private key format: %w", err)
 	}
 
 	// 计算最大解密块大小
@@ -134,7 +134,7 @@ func DecodeByRSA(ciphertext, privateKey []byte) ([]byte, error) {
 
 		chunk, err := rsa.DecryptPKCS1v15(rand.Reader, priv, ciphertext[offset:end])
 		if err != nil {
-			return nil, fmt.Errorf("decryption failed at offset %d: %v", offset, err)
+			return nil, fmt.Errorf("decryption failed at offset %d: %w", offset, err)
 		}
 		plaintext = append(plaintext, chunk...)
 	}
@@ -155,7 +155,7 @@ func encryptChunks(pub *rsa.PublicKey, data []byte) ([]byte, error) {
 
 		chunk, err := rsa.EncryptPKCS1v15(rand.Reader, pub, data[offset:end])
 		if err != nil {
-			return nil, fmt.Errorf("encryption failed at offset %d: %v", offset, err)
+			return nil, fmt.Errorf("encryption failed at offset %d: %w", offset, err)
 		}
 		ciphertext = append(ciphertext, chunk...)
 	}

@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package cliutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -46,7 +47,16 @@ func Run(cmd *cobra.Command) int {
 		if !logsInitialized {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		} else {
-			zap.S().Error("command failed", zap.String("err", err.Error()))
+			var errText string
+			if v, ok := errors.Unwrap(err).(interface {
+				GetDetail() string
+			}); ok {
+				errText = v.GetDetail()
+			} else {
+				errText = err.Error()
+			}
+
+			zap.S().Errorf("command failed: %v", errText)
 		}
 		return 1
 	}

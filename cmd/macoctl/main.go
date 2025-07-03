@@ -30,7 +30,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/vine-io/maco/api/types"
-	"github.com/vine-io/maco/pkg/client"
+	"github.com/vine-io/maco/client"
 	"github.com/vine-io/maco/pkg/logutil"
 )
 

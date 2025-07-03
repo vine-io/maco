@@ -78,7 +78,7 @@ func New(code Code, detail string) *Error {
 	}
 }
 
-func Newf(code Code, format string, args ...interface{}) *Error {
+func Newf(code Code, format string, args ...any) *Error {
 	return New(code, fmt.Sprintf(format, args...))
 }
 
@@ -90,7 +90,7 @@ func NewUnknown(detail string) *Error {
 	return New(Code_Unknown, detail)
 }
 
-func NewUnknownf(format string, args ...interface{}) *Error {
+func NewUnknownf(format string, args ...any) *Error {
 	return Newf(Code_Unknown, format, args...)
 }
 
@@ -98,7 +98,7 @@ func NewInternal(detail string) *Error {
 	return New(Code_Internal, detail)
 }
 
-func NewInternalf(format string, args ...interface{}) *Error {
+func NewInternalf(format string, args ...any) *Error {
 	return Newf(Code_Internal, format, args...)
 }
 
@@ -106,64 +106,128 @@ func NewBadRequest(detail string) *Error {
 	return New(Code_BadRequest, detail)
 }
 
-func NewBadRequestf(detail string) *Error {
-	return Newf(Code_BadRequest, detail)
+func NewBadRequestf(detail string, args ...any) *Error {
+	return Newf(Code_BadRequest, detail, args...)
 }
 
 func NewUnauthorized(detail string) *Error {
 	return New(Code_Unauthorized, detail)
 }
 
-func NewUnauthorizedf(detail string) *Error {
-	return Newf(Code_Unauthorized, detail)
+func NewUnauthorizedf(detail string, args ...any) *Error {
+	return Newf(Code_Unauthorized, detail, args...)
 }
 
 func NewForbidden(detail string) *Error {
 	return New(Code_Forbidden, detail)
 }
 
-func NewForbiddenf(detail string) *Error {
-	return Newf(Code_Forbidden, detail)
+func NewForbiddenf(detail string, args ...any) *Error {
+	return Newf(Code_Forbidden, detail, args...)
 }
 
 func NewNotFound(detail string) *Error {
 	return New(Code_NotFound, detail)
 }
 
-func NewNotFoundf(detail string) *Error {
-	return Newf(Code_NotFound, detail)
+func NewNotFoundf(detail string, args ...any) *Error {
+	return Newf(Code_NotFound, detail, args...)
 }
 
 func NewConflict(detail string) *Error {
 	return New(Code_Conflict, detail)
 }
 
-func NewConflictf(detail string) *Error {
-	return Newf(Code_Conflict, detail)
+func NewConflictf(detail string, args ...any) *Error {
+	return Newf(Code_Conflict, detail, args...)
 }
 
 func NewTooManyRequests(detail string) *Error {
 	return New(Code_TooManyRequests, detail)
 }
 
+func NewTooManyRequestsf(detail string, args ...any) *Error {
+	return Newf(Code_TooManyRequests, detail, args...)
+}
+
 func NewClientClosed(detail string) *Error {
 	return New(Code_ClientClosed, detail)
+}
+
+func NewClientClosedf(detail string, args ...any) *Error {
+	return Newf(Code_TooManyRequests, detail, args...)
 }
 
 func NewNotImplemented(detail string) *Error {
 	return New(Code_NotImplemented, detail)
 }
 
+func NewNotImplementedf(detail string, args ...any) *Error {
+	return Newf(Code_NotImplemented, detail, args...)
+}
+
 func NewUnavailable(detail string) *Error {
 	return New(Code_Unavailable, detail)
+}
+
+func NewUnavailablef(detail string, args ...any) *Error {
+	return Newf(Code_Unavailable, detail, args...)
 }
 
 func NewGatewayTimeout(detail string) *Error {
 	return New(Code_GatewayTimeout, detail)
 }
 
-func NewGatewayTimeoutf(detail string) *Error {
-	return Newf(Code_GatewayTimeout, detail)
+func NewGatewayTimeoutf(detail string, args ...any) *Error {
+	return Newf(Code_GatewayTimeout, detail, args...)
+}
+
+func IsOk(err error) bool {
+	return Parse(err).Code == Code_Ok
+}
+
+func IsUnknown(err error) bool {
+	return Parse(err).Code == Code_Unknown
+}
+
+func IsInternal(err error) bool {
+	return Parse(err).Code == Code_Internal
+}
+
+func IsUnauthorized(err error) bool {
+	return Parse(err).Code == Code_Unauthorized
+}
+
+func IsForbidden(err error) bool {
+	return Parse(err).Code == Code_Forbidden
+}
+
+func IsNotFound(err error) bool {
+	return Parse(err).Code == Code_NotFound
+}
+
+func IsConflict(err error) bool {
+	return Parse(err).Code == Code_Conflict
+}
+
+func IsTooManyRequests(err error) bool {
+	return Parse(err).Code == Code_TooManyRequests
+}
+
+func IsClientClosed(err error) bool {
+	return Parse(err).Code == Code_ClientClosed
+}
+
+func IsNotImplemented(err error) bool {
+	return Parse(err).Code == Code_NotImplemented
+}
+
+func IsUnavailable(err error) bool {
+	return Parse(err).Code == Code_Unavailable
+}
+
+func IsGatewayTimeout(err error) bool {
+	return Parse(err).Code == Code_GatewayTimeout
 }
 
 // FromStatus converts grpc Status to Error
@@ -180,6 +244,12 @@ func FromStatus(s *status.Status) *Error {
 
 // Parse converts error to *Error
 func Parse(err error) *Error {
+	if err == nil {
+		return nil
+	}
+	if v, ok := status.FromError(err); ok {
+		return FromStatus(v)
+	}
 	switch e := err.(type) {
 	case *Error:
 		return e

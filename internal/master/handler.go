@@ -27,6 +27,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -37,8 +38,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 
+	apiErr "github.com/vine-io/maco/api/errors"
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/api/types"
 	"github.com/vine-io/maco/docs"
@@ -147,8 +150,151 @@ func newMacoHandler(ctx context.Context, storage *Storage, sch *Scheduler) (pb.M
 	return handler, nil
 }
 
-func (h *macoHandler) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
-	return &pb.PingResponse{Message: "OK"}, nil
+func (h *macoHandler) Ping(ctx context.Context, _ *pb.PingRequest) (*pb.PingResponse, error) {
+	return &pb.PingResponse{}, nil
+}
+
+func (h *macoHandler) ListMinions(ctx context.Context, req *pb.ListMinionsRequest) (*pb.ListMinionsResponse, error) {
+	rsp := &pb.ListMinionsResponse{}
+
+	for _, value := range req.StateList {
+		state := types.MinionState(value)
+		minions, err := h.storage.GetMinions(state)
+		if err != nil {
+			return nil, err
+		}
+
+		switch state {
+		case types.Unaccepted:
+			rsp.Unaccepted = minions
+		case types.Accepted:
+			rsp.Accepted = minions
+		case types.AutoSign:
+			rsp.AutoSign = minions
+		case types.Denied:
+			rsp.Denied = minions
+		case types.Rejected:
+			rsp.Rejected = minions
+		}
+	}
+	return rsp, nil
+}
+
+func (h *macoHandler) GetMinion(ctx context.Context, req *pb.GetMinionRequest) (*pb.GetMinionResponse, error) {
+	minion, err := h.storage.GetMinion(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	rsp := &pb.GetMinionResponse{
+		Minion: minion.Minion,
+		State:  minion.State.String(),
+	}
+	return rsp, nil
+}
+
+func (h *macoHandler) AcceptMinion(ctx context.Context, req *pb.AcceptMinionRequest) (*pb.AcceptMinionResponse, error) {
+	targets := make([]string, 0)
+	if req.All {
+		minions, _ := h.storage.GetMinions(types.Unaccepted)
+		if req.IncludeRejected {
+			values, _ := h.storage.GetMinions(types.Rejected)
+			targets = append(targets, values...)
+		}
+		if req.IncludeDenied {
+			values, _ := h.storage.GetMinions(types.Denied)
+			targets = append(targets, values...)
+		}
+
+		for _, minion := range minions {
+			err := h.storage.AcceptMinion(minion, req.IncludeRejected, req.IncludeDenied)
+			if err != nil {
+				zap.L().Error("accept minion", zap.String("id", minion), zap.Error(err))
+			} else {
+				targets = append(targets, minion)
+			}
+		}
+	} else {
+		if len(req.Name) == 0 {
+			return nil, apiErr.NewBadRequest("name is required").ToStatus().Err()
+		}
+		err := h.storage.AcceptMinion(req.Name, req.IncludeRejected, req.IncludeDenied)
+		if err != nil {
+			return nil, apiErr.Parse(err).ToStatus().Err()
+		}
+		targets = append(targets, req.Name)
+	}
+
+	rsp := &pb.AcceptMinionResponse{
+		Minions: targets,
+	}
+	return rsp, nil
+}
+
+func (h *macoHandler) RejectMinion(ctx context.Context, req *pb.RejectMinionRequest) (*pb.RejectMinionResponse, error) {
+	targets := make([]string, 0)
+	if req.All {
+		minions, _ := h.storage.GetMinions(types.Unaccepted)
+		if req.IncludeAccepted {
+			values, _ := h.storage.GetMinions(types.Accepted)
+			targets = append(targets, values...)
+		}
+		if req.IncludeDenied {
+			values, _ := h.storage.GetMinions(types.Denied)
+			targets = append(targets, values...)
+		}
+
+		for _, minion := range minions {
+			err := h.storage.RejectMinion(minion, req.IncludeAccepted, req.IncludeDenied)
+			if err != nil {
+				zap.L().Error("reject minion", zap.String("id", minion), zap.Error(err))
+			} else {
+				targets = append(targets, minion)
+			}
+		}
+	} else {
+		if len(req.Name) == 0 {
+			return nil, apiErr.NewBadRequest("name is required").ToStatus().Err()
+		}
+		err := h.storage.RejectMinion(req.Name, req.IncludeAccepted, req.IncludeDenied)
+		if err != nil {
+			return nil, apiErr.Parse(err).ToStatus().Err()
+		}
+		targets = append(targets, req.Name)
+	}
+
+	rsp := &pb.RejectMinionResponse{
+		Minions: targets,
+	}
+	return rsp, nil
+}
+
+func (h *macoHandler) DeleteMinion(ctx context.Context, req *pb.DeleteMinionRequest) (*pb.DeleteMinionResponse, error) {
+	targets := make([]string, 0)
+	if req.All {
+		minions := h.storage.ListMinions()
+		for _, minion := range minions {
+			err := h.storage.DeleteMinion(minion)
+			if err != nil {
+				zap.L().Error("delete minion", zap.String("id", minion), zap.Error(err))
+			} else {
+				targets = append(targets, minion)
+			}
+		}
+	} else {
+		if len(req.Name) == 0 {
+			return nil, apiErr.NewBadRequest("name is required").ToStatus().Err()
+		}
+		err := h.storage.DeleteMinion(req.Name)
+		if err != nil {
+			return nil, apiErr.Parse(err).ToStatus().Err()
+		}
+		targets = append(targets, req.Name)
+	}
+
+	rsp := &pb.DeleteMinionResponse{
+		Minions: targets,
+	}
+	return rsp, nil
 }
 
 func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallResponse, error) {
@@ -160,7 +306,7 @@ func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallRe
 	}
 	out, err := h.sch.Handle(ctx, in)
 	if err != nil {
-		return nil, err
+		return nil, apiErr.Parse(err).ToStatus().Err()
 	}
 
 	rsp := &pb.CallResponse{
@@ -197,7 +343,7 @@ func (h *internalHandler) Dispatch(stream pb.InternalRPC_DispatchServer) error {
 		if err == io.EOF {
 			return nil
 		}
-		return status.Errorf(codes.Unknown, "dispatch stream error: %v", err)
+		return apiErr.Parse(err).ToStatus().Err()
 	}
 
 	if rsp.Type != types.EventType_EventConnect {
@@ -212,7 +358,12 @@ func (h *internalHandler) Dispatch(stream pb.InternalRPC_DispatchServer) error {
 	}
 
 	minion := connMsg.Minion
-	minion.OnlineTimestamp = time.Now().UnixNano()
+	grpcPeer, ok := peer.FromContext(stream.Context())
+	if ok {
+		minion.Ip = strings.Split(grpcPeer.Addr.String(), ":")[0]
+	}
+
+	minion.OnlineTimestamp = time.Now().Unix()
 	p, info, err := h.sch.AddStream(connMsg, stream)
 	if err != nil {
 		return status.Errorf(codes.Internal, "add stream error: %v", err)
@@ -229,9 +380,10 @@ func (h *internalHandler) Dispatch(stream pb.InternalRPC_DispatchServer) error {
 		zap.L().Error("reply connect response", zap.Error(err))
 	}
 
-	zap.L().Info("add a new pipe",
+	zap.L().Info("add new pipe",
 		zap.String("id", minion.Name),
 		zap.String("os", minion.Os),
+		zap.String("ip", minion.Ip),
 	)
 
 	err = p.start()
@@ -239,6 +391,7 @@ func (h *internalHandler) Dispatch(stream pb.InternalRPC_DispatchServer) error {
 	zap.L().Info("remove pipe",
 		zap.String("id", minion.Name),
 		zap.String("os", minion.Os),
+		zap.String("ip", minion.Ip),
 	)
 
 	if err != nil {
