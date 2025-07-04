@@ -203,10 +203,6 @@ func (s *Storage) GetMinions(state types.MinionState) ([]string, error) {
 	}
 
 	minions := sets.Values()
-	if len(minions) == 0 {
-		return nil, apiErr.NewBadRequest("minion not found")
-	}
-
 	return minions, nil
 }
 

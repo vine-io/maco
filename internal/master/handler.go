@@ -155,7 +155,13 @@ func (h *macoHandler) Ping(ctx context.Context, _ *pb.PingRequest) (*pb.PingResp
 }
 
 func (h *macoHandler) ListMinions(ctx context.Context, req *pb.ListMinionsRequest) (*pb.ListMinionsResponse, error) {
-	rsp := &pb.ListMinionsResponse{}
+	rsp := &pb.ListMinionsResponse{
+		Unaccepted: make([]string, 0),
+		Accepted:   make([]string, 0),
+		AutoSign:   make([]string, 0),
+		Denied:     make([]string, 0),
+		Rejected:   make([]string, 0),
+	}
 
 	for _, value := range req.StateList {
 		state := types.MinionState(value)

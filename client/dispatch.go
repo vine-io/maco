@@ -66,14 +66,17 @@ type Dispatcher struct {
 	done chan struct{}
 }
 
-func (c *Client) NewDispatcher(ctx context.Context, req *types.ConnectRequest, dataRoot string) (*Dispatcher, *types.Minion, error) {
+func (c *Client) NewDispatcher(ctx context.Context, req *types.ConnectRequest, lg *zap.Logger, dataRoot string) (*Dispatcher, *types.Minion, error) {
 	opts := c.buildCallOptions()
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 
 	connected := &atomic.Bool{}
 	connected.Store(false)
 	dispatcher := &Dispatcher{
 		ctx:            ctx,
-		lg:             c.opt.Logger,
+		lg:             lg,
 		internalClient: c.internalClient,
 		connMsg:        req,
 		callOptions:    opts,

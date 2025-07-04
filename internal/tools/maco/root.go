@@ -19,7 +19,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package app
+package maco
 
 import (
 	"context"
@@ -37,7 +37,7 @@ import (
 )
 
 var defaultUsageTemplate = `Usage:{{if .Runnable}}
-  {{.UseLine}}{{if eq .UseLine "maco [flags]" }} '<target>' <function> [arguments]{{end}}{{end}} {{if .HasAvailableSubCommands}}
+  {{.UseLine}} '<target>' <function> [arguments]{{end}} {{if .HasAvailableSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
 
 Aliases:
@@ -68,26 +68,23 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 `
 
 func NewMacoCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
-	root := &cobra.Command{
+	app := &cobra.Command{
 		Use:     "maco",
 		Short:   "the client of maco system",
 		Version: version.ReleaseVersion(),
-		PreRunE: func(cmd *cobra.Command, args []string) error { return nil },
 		RunE:    runMacoCmd,
 	}
 
-	root.SetIn(stdin)
-	root.SetOut(stdout)
-	root.SetErr(stderr)
-	root.SetVersionTemplate(version.GetVersionTemplate())
-	root.SetUsageTemplate(defaultUsageTemplate)
+	app.SetIn(stdin)
+	app.SetOut(stdout)
+	app.SetErr(stderr)
+	app.SetVersionTemplate(version.GetVersionTemplate())
+	app.SetUsageTemplate(defaultUsageTemplate)
 
-	root.AddCommand(newKeyCommand(stdin, stdout, stderr))
-
-	root.ResetFlags()
+	app.ResetFlags()
 	//flags := root.PersistentFlags()
 
-	return root
+	return app
 }
 
 func runMacoCmd(cmd *cobra.Command, args []string) error {
@@ -95,9 +92,9 @@ func runMacoCmd(cmd *cobra.Command, args []string) error {
 		return cmd.Usage()
 	}
 
-	cfg := logutil.NewLogConfig()
-	_ = cfg.SetupLogging()
-	cfg.SetupGlobalLoggers()
+	logCfg := logutil.NewLogConfig()
+	_ = logCfg.SetupLogging()
+	logCfg.SetupGlobalLoggers()
 
 	targets := ""
 	if len(args) > 1 {
@@ -116,8 +113,8 @@ func runMacoCmd(cmd *cobra.Command, args []string) error {
 	target := "192.168.141.128:4550"
 
 	lg, _ := zap.NewProduction()
-	opts := client.NewOptions(lg, target, "_output")
-	mc, err := client.NewClient(opts)
+	cfg := client.NewConfig(target)
+	mc, err := client.NewClient(cfg)
 	if err != nil {
 		return err
 	}

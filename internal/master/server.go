@@ -138,12 +138,7 @@ func (ms *Master) createListener() (string, net.Listener, error) {
 	zap.L().Debug("listen on " + listen)
 
 	var tlsConfig *tls.Config
-	isHttps := false
 	if cfg.CertFile != "" && cfg.KeyFile != "" {
-		isHttps = true
-	}
-
-	if isHttps {
 		cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 		if err != nil {
 			return "", nil, fmt.Errorf("load certificate pair: %w", err)

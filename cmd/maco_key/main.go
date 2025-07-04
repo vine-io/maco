@@ -24,11 +24,11 @@ package main
 import (
 	"os"
 
-	"github.com/vine-io/maco/internal/tools/maco"
+	"github.com/vine-io/maco/internal/tools/key"
 	"github.com/vine-io/maco/pkg/cliutil"
 )
 
 func main() {
-	cmd := maco.NewMacoCommand(os.Stdin, os.Stdout, os.Stderr)
+	cmd := key.NewKeyCommand(os.Stdin, os.Stdout, os.Stderr)
 	os.Exit(cliutil.Run(cmd))
 }

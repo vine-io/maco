@@ -19,24 +19,35 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package app
+package utils
 
 import (
-	"io"
+	"fmt"
 
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
+	"github.com/vine-io/maco/client"
 )
 
-func newKeyCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
-	app := &cobra.Command{
-		Use:   "key",
-		Short: "manages Maco authentication keys",
-		RunE:  runListMinionCommand,
+func ClientFromFlags(flagSet *pflag.FlagSet) (*client.Client, error) {
+	cfgPath, err := flagSet.GetString("config")
+	if err != nil {
+		return nil, fmt.Errorf("read from flags: %w", err)
 	}
 
-	return app
-}
+	cfg, err := client.FromPath(cfgPath)
+	if err != nil {
+		return nil, fmt.Errorf("load local config: %w", err)
+	}
 
-func runListMinionCommand(cmd *cobra.Command, args []string) error {
-	return nil
+	if err = cfg.Init(); err != nil {
+		return nil, fmt.Errorf("check config: %w", err)
+	}
+
+	masterClient, err := client.NewClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create master client: %w", err)
+	}
+
+	return masterClient, nil
 }

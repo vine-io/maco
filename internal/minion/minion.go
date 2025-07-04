@@ -102,8 +102,8 @@ func (m *Minion) start(ctx context.Context) error {
 
 	target := cfg.Master
 
-	copts := client.NewOptions(lg, target)
-	masterClient, err := client.NewClient(copts)
+	ccfg := client.NewConfig(target)
+	masterClient, err := client.NewClient(ccfg)
 	if err != nil {
 		return fmt.Errorf("connect to maco-master: %w", err)
 	}
@@ -113,7 +113,7 @@ func (m *Minion) start(ctx context.Context) error {
 		MinionPublicKey: pair.Public,
 	}
 	var dispatcher *client.Dispatcher
-	dispatcher, minion, err = masterClient.NewDispatcher(ctx, in, m.cfg.DataRoot)
+	dispatcher, minion, err = masterClient.NewDispatcher(ctx, in, lg, m.cfg.DataRoot)
 	if err != nil {
 		return fmt.Errorf("connect to dispatcher: %w", err)
 	}

@@ -24,10 +24,11 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"os"
 	"time"
 
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,34 +38,8 @@ import (
 	"github.com/vine-io/maco/api/types"
 )
 
-const (
-	DefaultTimeout = time.Second * 5
-)
-
-type Options struct {
-	Logger *zap.Logger
-
-	Target         string
-	DialTimeout    time.Duration
-	RequestTimeout time.Duration
-
-	TLS *tls.Config
-
-	masterPubKey []byte
-}
-
-func NewOptions(lg *zap.Logger, target string) *Options {
-	opts := &Options{
-		Logger:         lg,
-		Target:         target,
-		DialTimeout:    DefaultTimeout,
-		RequestTimeout: DefaultTimeout,
-	}
-	return opts
-}
-
 type Client struct {
-	opt *Options
+	cfg *Config
 
 	conn *grpc.ClientConn
 
@@ -74,12 +49,40 @@ type Client struct {
 	done chan struct{}
 }
 
-func NewClient(opt *Options) (*Client, error) {
-	target := opt.Target
+func NewClient(cfg *Config) (*Client, error) {
+	target := cfg.Target
+
+	var tlsConfig *tls.Config
+	if cfg.CertFile != "" && cfg.KeyFile != "" {
+		cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("load certificate pair: %w", err)
+		}
+
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
+			MaxVersion:   tls.VersionTLS13,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			},
+		}
+
+		if cfg.CaFile != "" {
+			caCert, err := os.ReadFile(cfg.CaFile)
+			if err != nil {
+				return nil, fmt.Errorf("load certificate CA: %w", err)
+			}
+			caPool := x509.NewCertPool()
+			caPool.AppendCertsFromPEM(caCert)
+			tlsConfig.RootCAs = caPool
+		}
+	}
 
 	var creds credentials.TransportCredentials
-	if opt.TLS != nil {
-		creds = credentials.NewTLS(opt.TLS)
+	if tlsConfig != nil {
+		creds = credentials.NewTLS(tlsConfig)
 	} else {
 		creds = insecure.NewCredentials()
 	}
@@ -103,7 +106,7 @@ func NewClient(opt *Options) (*Client, error) {
 
 	macoClient := pb.NewMacoRPCClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), opt.DialTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
 	defer cancel()
 
 	callOpts := []grpc.CallOption{}
@@ -115,7 +118,7 @@ func NewClient(opt *Options) (*Client, error) {
 	internalClient := pb.NewInternalRPCClient(conn)
 
 	client := &Client{
-		opt:            opt,
+		cfg:            cfg,
 		conn:           conn,
 		macoClient:     macoClient,
 		internalClient: internalClient,

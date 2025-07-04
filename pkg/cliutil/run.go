@@ -23,10 +23,12 @@ package cliutil
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 
 	cliflag "github.com/vine-io/maco/pkg/cliutil/flags"
@@ -71,6 +73,7 @@ func RunNoErrOutput(cmd *cobra.Command) error {
 }
 
 func run(cmd *cobra.Command) (logsInitialized bool, err error) {
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	cmd.SetGlobalNormalizationFunc(cliflag.WordSepNormalizeFunc)
 
 	// When error printing is enabled for the Cobra command, a flag parse
@@ -116,10 +119,19 @@ func run(cmd *cobra.Command) (logsInitialized bool, err error) {
 			logsInitialized = true
 			return pre(cmd, args)
 		}
-	default:
-		cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	case cmd.PreRun != nil:
+		pre := cmd.PreRun
+		cmd.PreRun = func(cmd *cobra.Command, args []string) {
 			logsInitialized = true
+			pre(cmd, args)
 		}
+	case cmd.PreRunE != nil:
+		pre := cmd.PreRunE
+		cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+			logsInitialized = true
+			return pre(cmd, args)
+		}
+	default:
 	}
 
 	err = cmd.Execute()

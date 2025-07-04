@@ -82,11 +82,11 @@ type LogConfig struct {
 }
 
 // LogRotationConfig Log rotation is disabled by default.
-// MaxSize    = 100 // MB
-// MaxAge     = 0 // days (no limit)
-// MaxBackups = 0 // no limit
-// LocalTime  = false // use computers local time, UTC by default
-// Compress   = false // compress the rotated log in gzip format
+// MaxSize:	100 // MB
+// MaxAge: 0 // days (no limit)
+// MaxBackups: 0 // no limit
+// LocalTime: false // use computers local time, UTC by default
+// Compress: false // compress the rotated log in gzip format
 type LogRotationConfig struct {
 	MaxSize    int  `json:"max-size" toml:"max-size"`
 	MaxAge     int  `json:"max-age" toml:"max-age"`
