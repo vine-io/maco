@@ -46,18 +46,18 @@ import (
 // Afterwards it logs them. This covers runtime errors.
 func Run(cmd *cobra.Command) int {
 	if logsInitialized, err := run(cmd); err != nil {
-		if !logsInitialized {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		var errText string
+		if v, ok := errors.Unwrap(err).(interface {
+			GetDetail() string
+		}); ok {
+			errText = v.GetDetail()
 		} else {
-			var errText string
-			if v, ok := errors.Unwrap(err).(interface {
-				GetDetail() string
-			}); ok {
-				errText = v.GetDetail()
-			} else {
-				errText = err.Error()
-			}
+			errText = err.Error()
+		}
 
+		if !logsInitialized {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", errText)
+		} else {
 			zap.S().Errorf("command failed: %v", errText)
 		}
 		return 1

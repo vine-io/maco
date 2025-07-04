@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 76b5ad475f8bc5f3a857ee74d9810153e8e956d2
+    version: a68b5fa8c5df35bec78803401252ebbd8f909932
 paths:
     /v1/call:
         post:
@@ -191,6 +191,9 @@ components:
                     $ref: '#/components/schemas/types.Minion'
                 state:
                     type: string
+                pubKey:
+                    type: string
+                    format: bytes
         rpc.macopb.ListMinionsResponse:
             type: object
             properties:

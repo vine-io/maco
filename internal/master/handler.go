@@ -194,6 +194,7 @@ func (h *macoHandler) GetMinion(ctx context.Context, req *pb.GetMinionRequest) (
 	rsp := &pb.GetMinionResponse{
 		Minion: minion.Minion,
 		State:  minion.State.String(),
+		PubKey: minion.PubKey,
 	}
 	return rsp, nil
 }

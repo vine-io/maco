@@ -54,15 +54,6 @@ func newListKeysCmd(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	return app
 }
 
-/*
-Accepted Keys:
-node1
-Denied Keys:
-Unaccepted Keys:
-Rejected Keys:
-node2
-*/
-
 type MinionKey struct {
 	Accepted   []string `json:"accepted" yaml:"accepted"`
 	AutoSigned []string `json:"auto_signed" yaml:"auto_signed"`
@@ -118,8 +109,15 @@ func runCmd(cmd *cobra.Command, args []string) error {
 	switch format {
 	case "json":
 		data, err = json.MarshalIndent(mk, " ", "   ")
+		if err != nil {
+			return fmt.Errorf("json marshal: %w", err)
+		}
+		data = append(data, '\n')
 	case "yaml":
 		data, err = yaml.Marshal(mk)
+		if err != nil {
+			return fmt.Errorf("yaml marshal: %w", err)
+		}
 	default:
 		if noColor {
 			color.NoColor = true
@@ -149,6 +147,6 @@ func runCmd(cmd *cobra.Command, args []string) error {
 		data = buf.Bytes()
 	}
 
-	fmt.Fprintf(output, "%s\n", string(data))
+	fmt.Fprintf(output, "%s", string(data))
 	return nil
 }

@@ -171,6 +171,7 @@ message GetMinionRequest {
 message GetMinionResponse {
   types.Minion minion = 1;
   string state = 2;
+  bytes pubKey = 3;
 }
 
 message AcceptMinionRequest {
