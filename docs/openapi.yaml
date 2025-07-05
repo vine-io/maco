@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: a68b5fa8c5df35bec78803401252ebbd8f909932
+    version: 19ba1b7b2b63367d68f3f02c7096469a7dd91e53
 paths:
     /v1/call:
         post:

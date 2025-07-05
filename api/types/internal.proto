@@ -49,6 +49,12 @@ message Minion {
   int64 offline_timestamp = 23;
 }
 
+message MinionKey {
+  Minion minion = 1;
+  bytes pubKey = 2;
+  string state = 3;
+}
+
 // Grain defines the base
 message Grain {
 
