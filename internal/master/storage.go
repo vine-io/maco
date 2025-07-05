@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -48,10 +49,14 @@ const (
 	minionRejectPath = "minions_rejected"
 )
 
-type MinionInfo struct {
-	*types.Minion
-	PubKey []byte
-	State  types.MinionState
+type minionEvent struct {
+	state   types.MinionState
+	minion  string
+	deleted bool
+}
+
+type storageEvent struct {
+	minion *minionEvent
 }
 
 type Options struct {
@@ -74,6 +79,10 @@ type Storage struct {
 
 	cmu         sync.RWMutex
 	minionCache map[types.MinionState]*dsutil.HashSet[string]
+
+	chNextId    *atomic.Int64
+	smu         sync.RWMutex
+	subscribers map[int64]chan *storageEvent
 }
 
 func newStorage(opt *Options) (*Storage, error) {
@@ -183,6 +192,9 @@ func newStorage(opt *Options) (*Storage, error) {
 		Options:     opt,
 		pair:        pair,
 		minionCache: ms,
+
+		chNextId:    &atomic.Int64{},
+		subscribers: make(map[int64]chan *storageEvent),
 	}
 
 	return s, nil
@@ -190,6 +202,33 @@ func newStorage(opt *Options) (*Storage, error) {
 
 func (s *Storage) ServerRsa() *pemutil.RsaPair {
 	return s.pair
+}
+
+func (s *Storage) publish(event *storageEvent) {
+	s.cmu.Lock()
+	defer s.cmu.Unlock()
+
+	for _, ch := range s.subscribers {
+		ch <- event
+	}
+}
+
+func (s *Storage) Subscribe() (chan *storageEvent, func()) {
+	ch := make(chan *storageEvent, 1)
+	id := s.chNextId.Add(1)
+
+	s.smu.Lock()
+	s.subscribers[id] = ch
+	s.smu.Unlock()
+
+	stop := func() {
+		s.smu.Lock()
+		delete(s.subscribers, id)
+		s.smu.Unlock()
+		close(ch)
+	}
+
+	return ch, stop
 }
 
 // GetMinions 返回指定状态的 minion 列表，如何 state 类型不正确或者列表为空，返回 ErrNotFound
@@ -219,8 +258,8 @@ func (s *Storage) ListMinions() []string {
 	return minions
 }
 
-func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign, autoDenied bool) (*MinionInfo, error) {
-	info := &MinionInfo{
+func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign, autoDenied bool) (*types.MinionKey, error) {
+	info := &types.MinionKey{
 		Minion: minion,
 		PubKey: s.pair.Public,
 	}
@@ -241,7 +280,7 @@ func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign, autoD
 		if autoDenied {
 			state = types.Denied
 		}
-		info.State = state
+		info.State = string(state)
 
 		name := minion.Name
 		minionRoot := filepath.Join(s.dir, minionPath, name)
@@ -266,7 +305,7 @@ func (s *Storage) AddMinion(minion *types.Minion, pubKey []byte, autoSign, autoD
 		s.cmu.Unlock()
 	}
 
-	info.State = state
+	info.State = string(state)
 	err = s.updateMinion(minion)
 	return info, err
 }
@@ -319,8 +358,8 @@ func (s *Storage) getMinion(name string) (*types.Minion, error) {
 	return &minion, nil
 }
 
-func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
-	info := &MinionInfo{}
+func (s *Storage) GetMinion(name string) (*types.MinionKey, error) {
+	info := &types.MinionKey{}
 
 	root := filepath.Join(s.dir, minionPath, name)
 	minion, err := s.getMinion(name)
@@ -334,14 +373,14 @@ func (s *Storage) GetMinion(name string) (*MinionInfo, error) {
 		}
 		return nil, err
 	}
-	stateByte, err := os.ReadFile(filepath.Join(root, "state"))
+	stateByte, err := fsutil.Cat(filepath.Join(root, "state"))
 	if err != nil {
 		return nil, err
 	}
 
 	info.Minion = minion
 	info.PubKey = pubKey
-	info.State = types.MinionState(stateByte)
+	info.State = string(stateByte)
 
 	return info, nil
 }
@@ -363,7 +402,7 @@ func (s *Storage) AcceptMinion(name string, includeRejected, includeDenied bool)
 				sets.Remove(name)
 			}
 		}
-		if includeDenied {
+		if !exists && includeDenied {
 			sets = s.minionCache[types.Denied]
 			exists = sets.Contains(name)
 			if exists {
@@ -381,7 +420,16 @@ func (s *Storage) AcceptMinion(name string, includeRejected, includeDenied bool)
 	s.minionCache[types.Accepted].Add(name)
 	s.cmu.Unlock()
 
-	return s.acceptMinion(name)
+	if err := s.acceptMinion(name); err != nil {
+		return err
+	}
+
+	_ = s.setUpdate(name, types.Accepted)
+
+	event := &minionEvent{minion: name, state: types.Accepted}
+	go s.publish(&storageEvent{minion: event})
+
+	return nil
 }
 
 func (s *Storage) RejectMinion(name string, includeAccepted, includeDenied bool) error {
@@ -407,7 +455,7 @@ func (s *Storage) RejectMinion(name string, includeAccepted, includeDenied bool)
 				}
 			}
 		}
-		if includeDenied {
+		if !exists && includeDenied {
 			sets = s.minionCache[types.Denied]
 			exists = sets.Contains(name)
 			if exists {
@@ -425,7 +473,16 @@ func (s *Storage) RejectMinion(name string, includeAccepted, includeDenied bool)
 	s.minionCache[types.Rejected].Add(name)
 	s.cmu.Unlock()
 
-	return s.rejectMinion(name)
+	if err := s.rejectMinion(name); err != nil {
+		return err
+	}
+
+	_ = s.setUpdate(name, types.Rejected)
+
+	event := &minionEvent{minion: name, state: types.Rejected}
+	go s.publish(&storageEvent{minion: event})
+
+	return nil
 }
 
 func (s *Storage) DeleteMinion(name string) error {
@@ -443,8 +500,15 @@ func (s *Storage) DeleteMinion(name string) error {
 		return err
 	}
 
+	event := &minionEvent{minion: name, state: state, deleted: true}
+	go s.publish(&storageEvent{minion: event})
+
 	minionRoot := filepath.Join(s.dir, minionPath, name)
-	return os.RemoveAll(minionRoot)
+	if err = os.RemoveAll(minionRoot); err != nil {
+		s.lg.Sugar().Errorf("remove minion %s failed: %v", name, err)
+	}
+
+	return nil
 }
 
 func (s *Storage) addMinion(id string, autoSign, autoDenied bool) error {
@@ -490,8 +554,11 @@ func (s *Storage) acceptMinion(id string) error {
 	if err != nil {
 		return nil
 	}
-	sl := filepath.Join(s.dir, kind)
-	return os.Remove(sl)
+	sl := filepath.Join(s.dir, kind, id)
+	if err = os.Remove(sl); err != nil {
+		s.lg.Sugar().Error("remove %s: %v", sl, err)
+	}
+	return nil
 }
 
 func (s *Storage) rejectMinion(id string) error {
@@ -510,8 +577,11 @@ func (s *Storage) rejectMinion(id string) error {
 	if err != nil {
 		return nil
 	}
-	sl := filepath.Join(s.dir, kind)
-	return os.Remove(sl)
+	sl := filepath.Join(s.dir, kind, id)
+	if err = os.Remove(sl); err != nil {
+		s.lg.Sugar().Error("remove %s: %v", sl, err)
+	}
+	return nil
 }
 
 func (s *Storage) deleteMinion(id string) error {
@@ -523,8 +593,11 @@ func (s *Storage) deleteMinion(id string) error {
 	if err != nil {
 		return nil
 	}
-	sl := filepath.Join(s.dir, kind)
-	return os.Remove(sl)
+	sl := filepath.Join(s.dir, kind, id)
+	if err = os.Remove(sl); err != nil {
+		s.lg.Sugar().Error("remove %s: %v", sl, err)
+	}
+	return nil
 }
 
 func walkMinions(root string, state types.MinionState) ([]string, error) {

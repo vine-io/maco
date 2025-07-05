@@ -97,20 +97,20 @@ func runMacoCmd(cmd *cobra.Command, args []string) error {
 	logCfg.SetupGlobalLoggers()
 
 	targets := ""
-	if len(args) > 1 {
-		targets = strings.Trim(args[1], `'`)
+	if len(args) > 0 {
+		targets = strings.Trim(args[0], `'`)
 		targets = strings.Trim(targets, `"`)
 	}
 	function := ""
-	if len(args) > 2 {
-		function = args[2]
+	if len(args) > 1 {
+		function = args[1]
 	}
 	var argments []string
-	if len(args) > 3 {
-		argments = args[3:]
+	if len(args) > 2 {
+		argments = args[2:]
 	}
 
-	target := "192.168.141.128:4550"
+	target := "127.0.0.1:4550"
 
 	lg, _ := zap.NewProduction()
 	cfg := client.NewConfig(target)

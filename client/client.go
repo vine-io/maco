@@ -162,7 +162,7 @@ func (c *Client) ListMinions(ctx context.Context, stateList ...types.MinionState
 	return minions, nil
 }
 
-func (c *Client) GetMinion(ctx context.Context, name string) (*types.Minion, types.MinionState, error) {
+func (c *Client) GetMinion(ctx context.Context, name string) (*types.MinionKey, error) {
 	opts := c.buildCallOptions()
 
 	in := &pb.GetMinionRequest{
@@ -171,16 +171,16 @@ func (c *Client) GetMinion(ctx context.Context, name string) (*types.Minion, typ
 
 	rsp, err := c.macoClient.GetMinion(ctx, in, opts...)
 	if err != nil {
-		return nil, types.Denied, parse(err)
+		return nil, parse(err)
 	}
-	return rsp.Minion, types.MinionState(rsp.State), nil
+	return rsp.Minion, nil
 }
 
-func (c *Client) AcceptMinion(ctx context.Context, name string, acceptAll, includeRejected, includeDenied bool) ([]string, error) {
+func (c *Client) AcceptMinion(ctx context.Context, minions []string, acceptAll, includeRejected, includeDenied bool) ([]string, error) {
 	opts := c.buildCallOptions()
 
 	in := &pb.AcceptMinionRequest{
-		Name:            name,
+		Minions:         minions,
 		All:             acceptAll,
 		IncludeRejected: includeRejected,
 		IncludeDenied:   includeDenied,
@@ -193,11 +193,11 @@ func (c *Client) AcceptMinion(ctx context.Context, name string, acceptAll, inclu
 	return rsp.Minions, nil
 }
 
-func (c *Client) RejectMinion(ctx context.Context, name string, rejectAll, includeAccepted, includeDenied bool) ([]string, error) {
+func (c *Client) RejectMinion(ctx context.Context, minions []string, rejectAll, includeAccepted, includeDenied bool) ([]string, error) {
 	opts := c.buildCallOptions()
 
 	in := &pb.RejectMinionRequest{
-		Name:            name,
+		Minions:         minions,
 		All:             rejectAll,
 		IncludeAccepted: includeAccepted,
 		IncludeDenied:   includeDenied,
@@ -211,12 +211,28 @@ func (c *Client) RejectMinion(ctx context.Context, name string, rejectAll, inclu
 	return rsp.Minions, nil
 }
 
-func (c *Client) DeleteMinion(ctx context.Context, name string, deleteAll bool) ([]string, error) {
+func (c *Client) PrintMinion(ctx context.Context, minions []string, printAll bool) ([]*types.MinionKey, error) {
+	opts := c.buildCallOptions()
+
+	in := &pb.PrintMinionRequest{
+		Minions: minions,
+		All:     printAll,
+	}
+
+	rsp, err := c.macoClient.PrintMinion(ctx, in, opts...)
+	if err != nil {
+		return nil, parse(err)
+	}
+
+	return rsp.Minions, nil
+}
+
+func (c *Client) DeleteMinion(ctx context.Context, minions []string, deleteAll bool) ([]string, error) {
 	opts := c.buildCallOptions()
 
 	in := &pb.DeleteMinionRequest{
-		Name: name,
-		All:  deleteAll,
+		Minions: minions,
+		All:     deleteAll,
 	}
 
 	rsp, err := c.macoClient.DeleteMinion(ctx, in, opts...)

@@ -36,6 +36,7 @@ import (
 
 	pb "github.com/vine-io/maco/api/rpc"
 	"github.com/vine-io/maco/api/types"
+	"github.com/vine-io/maco/pkg/logutil"
 	"github.com/vine-io/maco/pkg/pemutil"
 )
 
@@ -69,7 +70,9 @@ type Dispatcher struct {
 func (c *Client) NewDispatcher(ctx context.Context, req *types.ConnectRequest, lg *zap.Logger, dataRoot string) (*Dispatcher, *types.Minion, error) {
 	opts := c.buildCallOptions()
 	if lg == nil {
-		lg = zap.NewNop()
+		lcfg := logutil.NewLogConfig()
+		lcfg.SetupGlobalLoggers()
+		lg = lcfg.GetLogger()
 	}
 
 	connected := &atomic.Bool{}
@@ -178,7 +181,6 @@ func (d *Dispatcher) process() {
 	timer := time.NewTimer(interval)
 	defer timer.Stop()
 
-START:
 	for {
 		interval = retryInterval(attempts)
 		timer.Reset(interval)
@@ -204,7 +206,7 @@ START:
 					d.ech <- event
 				}
 				d.connected.Store(false)
-				break START
+				continue
 			} else {
 				// 重连成功，重置连接间隔
 				attempts = 0

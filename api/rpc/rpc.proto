@@ -111,6 +111,24 @@ service MacoRPC {
     };
   }
 
+  rpc PrintMinion(PrintMinionRequest) returns (PrintMinionResponse) {
+    option (google.api.http) = {
+      post: "/v1/minions/action/print"
+      body: "*"
+    };
+
+    option (openapi.v3.operation) = {
+      security: [
+        {
+          additional_properties: {
+            name: "bearerAuth",
+            value: {},
+          }
+        }
+      ]
+    };
+  }
+
   rpc DeleteMinion(DeleteMinionRequest) returns (DeleteMinionResponse) {
     option (google.api.http) = {
       post: "/v1/minions/action/delete"
@@ -169,13 +187,11 @@ message GetMinionRequest {
 }
 
 message GetMinionResponse {
-  types.Minion minion = 1;
-  string state = 2;
-  bytes pubKey = 3;
+  types.MinionKey minion = 1;
 }
 
 message AcceptMinionRequest {
-  string name = 1;
+  repeated string minions = 1;
   bool all = 2;
   bool includeRejected = 3;
   bool includeDenied = 4;
@@ -186,7 +202,7 @@ message AcceptMinionResponse {
 }
 
 message RejectMinionRequest {
-  string name = 1;
+  repeated string minions = 1;
   bool all = 2;
   bool includeAccepted = 3;
   bool includeDenied = 4;
@@ -196,8 +212,17 @@ message RejectMinionResponse {
   repeated string minions = 1;
 }
 
+message PrintMinionRequest {
+  repeated string minions = 1;
+  bool all = 2;
+}
+
+message PrintMinionResponse {
+  repeated types.MinionKey minions = 1;
+}
+
 message DeleteMinionRequest {
-  string name = 1;
+  repeated string minions = 1;
   bool all = 2;
 }
 

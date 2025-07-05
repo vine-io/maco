@@ -23,18 +23,17 @@ package logutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
-	"os"
 	"sync"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/vine-io/maco/pkg/logutil/zapgrpc"
 )
 
 var (
@@ -257,9 +256,9 @@ func (cfg *LogConfig) SetupGlobalLoggers() {
 	if lg != nil {
 		if cfg.Level == "debug" {
 			grpc.EnableTracing = true
-			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
+			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg, zapgrpc.WithDebug()))
 		} else {
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg, zapgrpc.WithWarn()))
 		}
 		zap.ReplaceGlobals(lg)
 	}

@@ -192,9 +192,7 @@ func (h *macoHandler) GetMinion(ctx context.Context, req *pb.GetMinionRequest) (
 		return nil, err
 	}
 	rsp := &pb.GetMinionResponse{
-		Minion: minion.Minion,
-		State:  minion.State.String(),
-		PubKey: minion.PubKey,
+		Minion: minion,
 	}
 	return rsp, nil
 }
@@ -221,14 +219,16 @@ func (h *macoHandler) AcceptMinion(ctx context.Context, req *pb.AcceptMinionRequ
 			}
 		}
 	} else {
-		if len(req.Name) == 0 {
-			return nil, apiErr.NewBadRequest("name is required").ToStatus().Err()
+		if len(req.Minions) == 0 {
+			return nil, apiErr.NewBadRequest("minions is required").ToStatus().Err()
 		}
-		err := h.storage.AcceptMinion(req.Name, req.IncludeRejected, req.IncludeDenied)
-		if err != nil {
-			return nil, apiErr.Parse(err).ToStatus().Err()
+		for _, minion := range req.Minions {
+			err := h.storage.AcceptMinion(minion, req.IncludeRejected, req.IncludeDenied)
+			if err != nil {
+				return nil, apiErr.Parse(err).ToStatus().Err()
+			}
+			targets = append(targets, minion)
 		}
-		targets = append(targets, req.Name)
 	}
 
 	rsp := &pb.AcceptMinionResponse{
@@ -259,14 +259,16 @@ func (h *macoHandler) RejectMinion(ctx context.Context, req *pb.RejectMinionRequ
 			}
 		}
 	} else {
-		if len(req.Name) == 0 {
-			return nil, apiErr.NewBadRequest("name is required").ToStatus().Err()
+		if len(req.Minions) == 0 {
+			return nil, apiErr.NewBadRequest("minions is required").ToStatus().Err()
 		}
-		err := h.storage.RejectMinion(req.Name, req.IncludeAccepted, req.IncludeDenied)
-		if err != nil {
-			return nil, apiErr.Parse(err).ToStatus().Err()
+		for _, minion := range req.Minions {
+			err := h.storage.RejectMinion(minion, req.IncludeAccepted, req.IncludeDenied)
+			if err != nil {
+				return nil, apiErr.Parse(err).ToStatus().Err()
+			}
+			targets = append(targets, minion)
 		}
-		targets = append(targets, req.Name)
 	}
 
 	rsp := &pb.RejectMinionResponse{
@@ -288,17 +290,48 @@ func (h *macoHandler) DeleteMinion(ctx context.Context, req *pb.DeleteMinionRequ
 			}
 		}
 	} else {
-		if len(req.Name) == 0 {
-			return nil, apiErr.NewBadRequest("name is required").ToStatus().Err()
+		if len(req.Minions) == 0 {
+			return nil, apiErr.NewBadRequest("minions is required").ToStatus().Err()
 		}
-		err := h.storage.DeleteMinion(req.Name)
-		if err != nil {
-			return nil, apiErr.Parse(err).ToStatus().Err()
+		for _, minion := range req.Minions {
+			err := h.storage.DeleteMinion(minion)
+			if err != nil {
+				return nil, apiErr.Parse(err).ToStatus().Err()
+			}
+			targets = append(targets, minion)
 		}
-		targets = append(targets, req.Name)
 	}
 
 	rsp := &pb.DeleteMinionResponse{
+		Minions: targets,
+	}
+	return rsp, nil
+}
+
+func (h *macoHandler) PrintMinion(ctx context.Context, req *pb.PrintMinionRequest) (*pb.PrintMinionResponse, error) {
+	targets := make([]*types.MinionKey, 0)
+	if req.All {
+		minions := h.storage.ListMinions()
+		for _, minion := range minions {
+			key, _ := h.storage.GetMinion(minion)
+			if key != nil {
+				targets = append(targets, key)
+			}
+		}
+	} else {
+		if len(req.Minions) == 0 {
+			return nil, apiErr.NewBadRequest("minions is required").ToStatus().Err()
+		}
+		for _, minion := range req.Minions {
+			key, err := h.storage.GetMinion(minion)
+			if err != nil {
+				return nil, apiErr.NewNotFound("minion not found").ToStatus().Err()
+			}
+			targets = append(targets, key)
+		}
+	}
+
+	rsp := &pb.PrintMinionResponse{
 		Minions: targets,
 	}
 	return rsp, nil

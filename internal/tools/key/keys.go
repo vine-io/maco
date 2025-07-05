@@ -24,9 +24,11 @@ package key
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -37,12 +39,28 @@ import (
 	"github.com/vine-io/maco/internal/tools/utils"
 )
 
+type minionMapping struct {
+	Accepted   []string `json:"accepted" yaml:"accepted"`
+	AutoSigned []string `json:"auto_signed" yaml:"auto_signed"`
+	Denied     []string `json:"denied" yaml:"denied,omitempty"`
+	Unaccepted []string `json:"unaccepted" yaml:"unaccepted"`
+	Rejected   []string `json:"rejected" yaml:"rejected"`
+}
+
+type minionKeyMapping struct {
+	Accepted   []*types.MinionKey `json:"accepted" yaml:"accepted"`
+	AutoSigned []*types.MinionKey `json:"auto_signed" yaml:"auto_signed"`
+	Denied     []*types.MinionKey `json:"denied" yaml:"denied,omitempty"`
+	Unaccepted []*types.MinionKey `json:"unaccepted" yaml:"unaccepted"`
+	Rejected   []*types.MinionKey `json:"rejected" yaml:"rejected"`
+}
+
 func newListKeysCmd(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	app := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"L", "ls"},
 		Short:   "list minions key",
-		RunE:    runCmd,
+		RunE:    runListKeysCmd,
 	}
 
 	app.SetIn(stdin)
@@ -54,21 +72,14 @@ func newListKeysCmd(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	return app
 }
 
-type MinionKey struct {
-	Accepted   []string `json:"accepted" yaml:"accepted"`
-	AutoSigned []string `json:"auto_signed" yaml:"auto_signed"`
-	Denied     []string `json:"denied" yaml:"denied,omitempty"`
-	Unaccepted []string `json:"unaccepted" yaml:"unaccepted"`
-	Rejected   []string `json:"rejected" yaml:"rejected"`
-}
-
-func runCmd(cmd *cobra.Command, args []string) error {
+func runListKeysCmd(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
 	globalSet := cmd.Parent().PersistentFlags()
 	noColor, _ := globalSet.GetBool("no-color")
 	format, _ := globalSet.GetString("format")
 	outputFile, _ := globalSet.GetString("output")
+	outputAppend, _ := globalSet.GetBool("output-append")
 
 	mc, err := utils.ClientFromFlags(globalSet)
 	if err != nil {
@@ -87,7 +98,7 @@ func runCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
-	mk := MinionKey{
+	mapping := minionMapping{
 		Accepted:   out[types.Accepted],
 		AutoSigned: out[types.AutoSign],
 		Denied:     out[types.Denied],
@@ -97,7 +108,11 @@ func runCmd(cmd *cobra.Command, args []string) error {
 
 	output := cmd.OutOrStdout()
 	if len(outputFile) != 0 {
-		fd, fdErr := os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+		mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+		if outputAppend {
+			mode = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+		fd, fdErr := os.OpenFile(outputFile, mode, 0755)
 		if fdErr != nil {
 			return fmt.Errorf("open output file: %w", fdErr)
 		}
@@ -108,40 +123,174 @@ func runCmd(cmd *cobra.Command, args []string) error {
 	var data []byte
 	switch format {
 	case "json":
-		data, err = json.MarshalIndent(mk, " ", "   ")
+		data, err = json.MarshalIndent(mapping, " ", "   ")
 		if err != nil {
 			return fmt.Errorf("json marshal: %w", err)
 		}
 		data = append(data, '\n')
 	case "yaml":
-		data, err = yaml.Marshal(mk)
+		data, err = yaml.Marshal(mapping)
 		if err != nil {
 			return fmt.Errorf("yaml marshal: %w", err)
 		}
 	default:
-		if noColor {
+		if noColor || !utils.AllowColor() {
 			color.NoColor = true
 		}
 
 		buf := bytes.NewBufferString("")
 		color.New(color.FgGreen).Fprintf(buf, "Accepted Keys:\n")
-		for _, minion := range mk.Accepted {
+		for _, minion := range mapping.Accepted {
 			color.New(color.FgGreen).Fprintf(buf, "%s\n", minion)
 		}
-		for _, minion := range mk.Accepted {
+		for _, minion := range mapping.AutoSigned {
 			color.New(color.FgGreen).Fprintf(buf, "%s\n", minion)
 		}
 		color.New(color.FgMagenta).Fprintf(buf, "Denied Keys:\n")
-		for _, minion := range mk.Denied {
+		for _, minion := range mapping.Denied {
 			color.New(color.FgMagenta).Fprintf(buf, "%s\n", minion)
 		}
-		color.New(color.FgRed).Fprintf(buf, "Unaccepted Keys:\n")
-		for _, minion := range mk.Unaccepted {
+		color.New(color.FgYellow).Fprintf(buf, "Unaccepted Keys:\n")
+		for _, minion := range mapping.Unaccepted {
+			color.New(color.FgYellow).Fprintf(buf, "%s\n", minion)
+		}
+		color.New(color.FgRed).Fprintf(buf, "Rejected Keys:\n")
+		for _, minion := range mapping.Rejected {
 			color.New(color.FgRed).Fprintf(buf, "%s\n", minion)
 		}
-		color.New(color.FgYellow).Fprintf(buf, "Rejected Keys:\n")
-		for _, minion := range mk.Rejected {
-			color.New(color.FgYellow).Fprintf(buf, "%s\n", minion)
+
+		data = buf.Bytes()
+	}
+
+	fmt.Fprintf(output, "%s", string(data))
+	return nil
+}
+
+func newPrintKeysCmd(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
+	app := &cobra.Command{
+		Use:     "print",
+		Aliases: []string{"P"},
+		Short:   "list minions key",
+		RunE:    runPrintKeysCmd,
+	}
+
+	app.SetIn(stdin)
+	app.SetOut(stdout)
+	app.SetErr(stderr)
+
+	app.SetUsageTemplate(fmt.Sprintf(defaultUsageTemplate, " [minions] "))
+
+	app.ResetFlags()
+	flagSet := app.Flags()
+	flagSet.BoolP("all", "", false, "print all keys")
+
+	return app
+}
+
+func runPrintKeysCmd(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
+	flagSet := cmd.Flags()
+	globalSet := cmd.Parent().PersistentFlags()
+	noColor, _ := globalSet.GetBool("no-color")
+	format, _ := globalSet.GetString("format")
+	outputFile, _ := globalSet.GetString("output")
+	outputAppend, _ := globalSet.GetBool("output-append")
+
+	all, _ := flagSet.GetBool("all")
+
+	mc, err := utils.ClientFromFlags(globalSet)
+	if err != nil {
+		return err
+	}
+
+	minions := []string{}
+	if len(args) > 0 {
+		minions = strings.Split(args[0], ",")
+	}
+	if (len(minions) == 0 || minions[0] == "") && !all {
+		return errors.New("no minions specified")
+	}
+
+	out, err := mc.PrintMinion(ctx, minions, all)
+	if err != nil {
+		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
+	}
+
+	mapping := &minionKeyMapping{
+		Accepted:   []*types.MinionKey{},
+		AutoSigned: []*types.MinionKey{},
+		Denied:     []*types.MinionKey{},
+		Unaccepted: []*types.MinionKey{},
+		Rejected:   []*types.MinionKey{},
+	}
+
+	for _, key := range out {
+		switch types.MinionState(key.State) {
+		case types.Accepted:
+			mapping.Accepted = append(mapping.Accepted, key)
+		case types.AutoSign:
+			mapping.AutoSigned = append(mapping.AutoSigned, key)
+		case types.Denied:
+			mapping.Denied = append(mapping.Denied, key)
+		case types.Unaccepted:
+			mapping.Unaccepted = append(mapping.Unaccepted, key)
+		case types.Rejected:
+			mapping.Rejected = append(mapping.Rejected, key)
+		}
+	}
+
+	output := cmd.OutOrStdout()
+	if len(outputFile) != 0 {
+		mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+		if outputAppend {
+			mode = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+		fd, fdErr := os.OpenFile(outputFile, mode, 0755)
+		if fdErr != nil {
+			return fmt.Errorf("open output file: %w", fdErr)
+		}
+		defer fd.Close()
+		output = fd
+	}
+
+	var data []byte
+	switch format {
+	case "json":
+		data, err = json.MarshalIndent(mapping, " ", "   ")
+		if err != nil {
+			return fmt.Errorf("json marshal: %w", err)
+		}
+		data = append(data, '\n')
+	case "yaml":
+		data, err = yaml.Marshal(mapping)
+		if err != nil {
+			return fmt.Errorf("yaml marshal: %w", err)
+		}
+	default:
+		if noColor || !utils.AllowColor() {
+			color.NoColor = true
+		}
+
+		buf := bytes.NewBufferString("")
+		color.New(color.FgGreen).Fprintf(buf, "Accepted Keys:\n")
+		for _, minion := range mapping.Accepted {
+			color.New(color.FgGreen).Fprintf(buf, "  %s: %s", minion.Minion.Name, minion.PubKey)
+		}
+		for _, minion := range mapping.AutoSigned {
+			color.New(color.FgGreen).Fprintf(buf, "  %s: %s", minion.Minion.Name, minion.PubKey)
+		}
+		color.New(color.FgMagenta).Fprintf(buf, "Denied Keys:\n")
+		for _, minion := range mapping.Denied {
+			color.New(color.FgMagenta).Fprintf(buf, "  %s: %s", minion.Minion.Name, minion.PubKey)
+		}
+		color.New(color.FgYellow).Fprintf(buf, "Unaccepted Keys:\n")
+		for _, minion := range mapping.Unaccepted {
+			color.New(color.FgYellow).Fprintf(buf, "  %s: %s", minion.Minion.Name, minion.PubKey)
+		}
+		color.New(color.FgRed).Fprintf(buf, "Rejected Keys:\n")
+		for _, minion := range mapping.Rejected {
+			color.New(color.FgRed).Fprintf(buf, "  %s: %s", minion.Minion.Name, minion.PubKey)
 		}
 
 		data = buf.Bytes()

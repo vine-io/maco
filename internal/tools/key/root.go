@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package key
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -30,6 +31,37 @@ import (
 
 	version "github.com/vine-io/maco/pkg/version"
 )
+
+var defaultUsageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}%s{{end}} {{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+
+Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+
+{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+
+Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
 
 func NewKeyCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	app := &cobra.Command{
@@ -43,7 +75,14 @@ func NewKeyCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	app.SetErr(stderr)
 	app.SetVersionTemplate(version.GetVersionTemplate())
 
+	app.SetUsageTemplate(fmt.Sprintf(defaultUsageTemplate, " [global flags] "))
+
+	app.AddCommand(newAcceptKeysCmd(stdin, stdout, stderr))
+	app.AddCommand(newDeleteKeysCmd(stdin, stdout, stderr))
+	app.AddCommand(newRejectKeysCmd(stdin, stdout, stderr))
+
 	app.AddCommand(newListKeysCmd(stdin, stdout, stderr))
+	app.AddCommand(newPrintKeysCmd(stdin, stdout, stderr))
 
 	app.ResetFlags()
 
@@ -53,11 +92,12 @@ func NewKeyCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 		configPath = filepath.Join(homeDir, ".maco", "maco.toml")
 	}
 
-	pflags := app.PersistentFlags()
-	pflags.StringP("config", "C", configPath, "Set path to the configuration file.")
-	pflags.StringP("format", "f", "", "Set the format of output, etc text, json, yaml.")
-	pflags.StringP("output", "", "", "Write the output to the specified file.")
-	pflags.BoolP("no-color", "", false, "Disable all colored output.")
+	globalSet := app.PersistentFlags()
+	globalSet.StringP("config", "C", configPath, "Set path to the configuration file.")
+	globalSet.StringP("format", "F", "", "Set the format of output, etc text, json, yaml.")
+	globalSet.StringP("output", "O", "", "Write the output to the specified file.")
+	globalSet.BoolP("output-append", "", false, "Append the output to the specified file.")
+	globalSet.BoolP("no-color", "", false, "Disable all colored output.")
 
 	return app
 }

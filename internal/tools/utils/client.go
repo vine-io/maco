@@ -23,6 +23,8 @@ package utils
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/pflag"
 
@@ -50,4 +52,14 @@ func ClientFromFlags(flagSet *pflag.FlagSet) (*client.Client, error) {
 	}
 
 	return masterClient, nil
+}
+
+func AllowColor() bool {
+	value, ok := os.LookupEnv("SHELL")
+	if !ok {
+		return false
+	}
+	parts := strings.Split(value, "/")
+	shell := strings.ToLower(parts[len(parts)-1])
+	return shell == "bash" || shell == "zsh"
 }

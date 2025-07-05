@@ -311,7 +311,9 @@ type Scheduler struct {
 	tmu       sync.RWMutex
 	taskStore map[uint64]*task
 
-	mch chan *message
+	mch         chan *message
+	ech         chan *storageEvent
+	eventCancel func()
 }
 
 func NewScheduler(storage *Storage) (*Scheduler, error) {
@@ -334,6 +336,8 @@ func NewScheduler(storage *Storage) (*Scheduler, error) {
 	idAlloc := newIDAllocator()
 	taskStore := make(map[uint64]*task)
 
+	ech, eventCancel := storage.Subscribe()
+
 	sch := &Scheduler{
 		pipes:       pipes,
 		minions:     minions,
@@ -342,12 +346,14 @@ func NewScheduler(storage *Storage) (*Scheduler, error) {
 		idAlloc:     idAlloc,
 		taskStore:   taskStore,
 		mch:         make(chan *message, 100),
+		ech:         ech,
+		eventCancel: eventCancel,
 	}
 
 	return sch, nil
 }
 
-func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (*pipe, *MinionInfo, error) {
+func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (*pipe, *types.MinionKey, error) {
 	name := in.Minion.Name
 
 	s.pmu.RLock()
@@ -364,7 +370,7 @@ func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (
 	if err != nil {
 		return nil, nil, err
 	}
-	state := info.State
+	state := types.MinionState(info.State)
 
 	pair := s.storage.ServerRsa()
 	p := newPipe(name, pair, in.MinionPublicKey, stream, s.mch)
@@ -489,6 +495,8 @@ func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error)
 }
 
 func (s *Scheduler) Run(ctx context.Context) {
+	defer s.eventCancel()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -517,7 +525,23 @@ func (s *Scheduler) Run(ctx context.Context) {
 				t.notify(m.name, msg)
 			}
 			s.tmu.RUnlock()
+		case e, ok := <-s.ech:
+			if !ok {
+				continue
+			}
 
+			if me := e.minion; me != nil {
+				if me.deleted {
+					s.minions.Remove(me.minion)
+				} else {
+					switch me.state {
+					case types.Accepted, types.AutoSign:
+						s.minions.Add(me.minion)
+					case types.Rejected, types.Denied:
+						s.minions.Remove(me.minion)
+					}
+				}
+			}
 		}
 	}
 }

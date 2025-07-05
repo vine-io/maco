@@ -22,18 +22,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package minion
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 
 	"github.com/vine-io/maco/api/types"
@@ -120,91 +116,7 @@ func (m *Minion) start(ctx context.Context) error {
 	_ = m.setMinion(minion)
 
 	go m.dispatch(dispatcher)
-
 	return nil
-}
-
-func (m *Minion) dispatch(dispatcher *client.Dispatcher) {
-	for {
-		event, err := dispatcher.Recv()
-		if err != nil {
-			return
-		}
-
-		if event.Err != nil {
-			continue
-		}
-
-		switch event.EventType {
-		case types.EventType_EventCall:
-			msg := event.Call
-			if msg == nil {
-				continue
-			}
-			in := &types.CallRequest{}
-			b, e1 := pemutil.DecodeByRSA(msg.Data, m.rsaPair.Private)
-			if e1 != nil {
-				event.Err = e1
-			} else {
-				e1 = msgpack.Unmarshal(b, in)
-				event.Err = e1
-			}
-
-			if e1 != nil {
-				reply := &types.CallResponse{
-					Id:    msg.Id,
-					Type:  types.ResultType_ResultError,
-					Error: e1.Error(),
-				}
-				_ = dispatcher.Call(reply)
-				continue
-			}
-
-			if in.Timeout == 0 {
-				in.Timeout = 10
-			}
-			rsp, e1 := runCmd(m.ctx, in)
-			if e1 != nil {
-
-			}
-			_ = dispatcher.Call(rsp)
-		}
-	}
-}
-
-func runCmd(ctx context.Context, in *types.CallRequest) (*types.CallResponse, error) {
-	timeout := time.Duration(in.Timeout) * time.Second
-	callCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	shell := fmt.Sprintf("%s", in.Function)
-	for _, arg := range in.Args {
-		shell += " " + arg
-	}
-
-	buf := bytes.NewBufferString("")
-	cmd := exec.CommandContext(callCtx, "/bin/bash", "-c", shell)
-	cmd.Stdout = buf
-	cmd.Stderr = buf
-	var e1 error
-	if e1 = cmd.Start(); e1 == nil {
-		e1 = cmd.Wait()
-	}
-
-	callRsp := &types.CallResponse{
-		Id:   in.Id,
-		Type: types.ResultType_ResultOk,
-	}
-
-	callRsp.RetCode = int32(cmd.ProcessState.ExitCode())
-	if e1 != nil {
-		callRsp.Type = types.ResultType_ResultError
-		callRsp.Error = buf.String()
-	} else {
-		callRsp.Result = bytes.TrimSuffix(buf.Bytes(), []byte("\n"))
-	}
-
-	return callRsp, e1
 }
 
 func (m *Minion) destroy() {}

@@ -167,7 +167,7 @@ func (set *HashSet[T]) Difference(another *HashSet[T]) *HashSet[T] {
 	return result
 }
 
-// SafeHashSet Concurrent safe HashSet
+// SafeHashSet concurrent safe HashSet
 type SafeHashSet[T comparable] struct {
 	sync.RWMutex
 	sets *HashSet[T]
