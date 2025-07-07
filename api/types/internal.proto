@@ -102,48 +102,49 @@ message ConnectResponse {
   bytes masterPublicKey = 2;
 }
 
-//enum Op {
-//  OpEq = 0;
-//  OpGt = 1;
-//  OpGte = 2;
-//  OpLt = 3;
-//  OpLte = 4;
-//  OpLike = 5;
-//}
-//
-//enum Logic {
-//  LgUnknown = 0;
-//  LgAnd = 1; // 逻辑与
-//  LgOr = 2; // 逻辑或
-//}
-//
-//// Condition 筛选条件
-//message Field {
-//  Op op = 1;
-//  string query = 2;
-//  string value = 3;
-//}
-//
-//// Segment 筛选语句
-//message Segment {
-//  // 连接逻辑
-//  Logic logic = 1;
-//  // minion 条件
-//  Field minion = 2;
-//  // minion grain 条件
-//  Field grain = 3;
-//}
-//
-//// Selector minion 筛选器
-message Selector {
-  repeated string minions = 1;
+message SelectionPair {
+  string key = 1;
+  string value = 2;
+}
+
+message LogicAnd {}
+
+message LogicOr {}
+
+// Selection minions 筛选器
+message Selection {
+  // 使用 minions id 作为选择条件
+  repeated string host = 1;
+  // 使用 minions id 的正则表达式作为选择条件
+  string hostPcre = 2;
+  // 使用 id range 作为选择条件
+  string idRange = 3;
+  // 使用 hostGroup 作为选择条件
+  repeated string hostGroups = 4;
+  // 使用 ip 地址作为选择条件
+  string ipCidr = 5;
+  // 使用 grains 作为选择条件
+  SelectionPair grains = 6;
+  // 使用 grains 正则表达式作为选择条件
+  SelectionPair grainsPcre = 7;
+  // 使用 pillar 作为选择条件
+  SelectionPair pillar = 8;
+  // 使用 pillar 正则表达式作为选择条件
+  SelectionPair pillarPcre = 9;
+
+  LogicAnd and = 11; // 逻辑与，多种选择条件下使用
+  LogicOr or = 12; // 逻辑或，多种选择条件下使用
+}
+
+message SelectionOptions {
+  repeated Selection selections = 1;
 }
 
 message CallRequest {
+  // 筛选符合的 minions
+  SelectionOptions options = 1;
   // 请求 id，确认请求唯一值
-  uint64 id = 1;
-  // 筛选符合的 minion
-  Selector selector = 2;
+  uint64 id = 2;
   // 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
   string function = 3;
   // 方法参数

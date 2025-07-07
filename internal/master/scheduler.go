@@ -123,7 +123,9 @@ func (alloc *idAllocator) Free(id uint64) {
 type pipe struct {
 	ctx context.Context
 
-	name string
+	name   string
+	ip     string
+	groups []string
 
 	// master private rsa key
 	rsaPair *pemutil.RsaPair
@@ -135,20 +137,6 @@ type pipe struct {
 	mch    chan<- *message
 
 	stopCh chan struct{}
-}
-
-func newPipe(name string, pair *pemutil.RsaPair, pubKey []byte, stream DispatchStream, mch chan<- *message) *pipe {
-	p := &pipe{
-		ctx:     stream.Context(),
-		name:    name,
-		rsaPair: pair,
-		pubKey:  pubKey,
-		stream:  stream,
-		mch:     mch,
-		stopCh:  make(chan struct{}, 1),
-	}
-
-	return p
 }
 
 func (p *pipe) send(in *Request) error {
@@ -373,7 +361,18 @@ func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (
 	state := types.MinionState(info.State)
 
 	pair := s.storage.ServerRsa()
-	p := newPipe(name, pair, in.MinionPublicKey, stream, s.mch)
+	p := &pipe{
+		ctx:     stream.Context(),
+		name:    name,
+		ip:      info.Minion.Ip,
+		groups:  make([]string, 0),
+		rsaPair: pair,
+		pubKey:  pair.Public,
+		stream:  stream,
+		mch:     s.mch,
+		stopCh:  make(chan struct{}, 1),
+	}
+
 	s.pmu.Lock()
 	s.pipes.Set(name, p)
 	s.pmu.Unlock()
@@ -408,10 +407,21 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 	return p.send(in)
 }
 
-func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error) {
+func (s *Scheduler) selectPipe(options *types.SelectionOptions) ([]*pipe, error) {
+	pipes := make([]*pipe, 0)
+	s.pmu.RLock()
+	defer s.pmu.RUnlock()
+
+	//for _, p := range pipes {
+	//
+	//}
+
+	return pipes, nil
+}
+
+func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Response, error) {
 
 	//req.Call
-	in := req.Call
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(in.Timeout)*time.Second)
 	defer cancel()
 
@@ -426,45 +436,47 @@ func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error)
 	in.Id = nextId
 
 	targets := make([]string, 0)
-	if in.Selector != nil {
-		targets = in.Selector.Minions
-	}
+	//if in.Selector != nil {
+	//	targets = in.Selector.Minions
+	//}
 	if len(targets) == 0 {
 		return nil, apiErr.NewBadRequest("no targets")
 	}
 
 	total := uint32(0)
-	pipes := make([]*pipe, 0)
-	for _, name := range targets {
-		if !s.minions.Contains(name) {
-			item := &types.ReportItem{
-				Minion: name,
-				Result: false,
-				Error:  fmt.Sprintf("minion %s is not accepted", name),
-			}
-			report.Items = append(report.Items, item)
-			continue
-		}
+	//pipes := make([]*pipe, 0)
+	//for _, name := range targets {
+	//	if !s.minions.Contains(name) {
+	//		item := &types.ReportItem{
+	//			Minion: name,
+	//			Result: false,
+	//			Error:  fmt.Sprintf("minion %s is not accepted", name),
+	//		}
+	//		report.Items = append(report.Items, item)
+	//		continue
+	//	}
+	//
+	//	s.pmu.RLock()
+	//	p, ok := s.pipes.Get(name)
+	//	s.pmu.RUnlock()
+	//	if ok {
+	//		total += 1
+	//		pipes = append(pipes, p)
+	//	} else {
+	//		item := &types.ReportItem{
+	//			Minion: name,
+	//			Result: false,
+	//			Error:  fmt.Sprintf("minion %s is not online", name),
+	//		}
+	//		report.Items = append(report.Items, item)
+	//	}
+	//}
+	//
+	//if len(pipes) == 0 {
+	//	return nil, apiErr.NewBadRequest("no available minions")
+	//}
 
-		s.pmu.RLock()
-		p, ok := s.pipes.Get(name)
-		s.pmu.RUnlock()
-		if ok {
-			total += 1
-			pipes = append(pipes, p)
-		} else {
-			item := &types.ReportItem{
-				Minion: name,
-				Result: false,
-				Error:  fmt.Sprintf("minion %s is not online", name),
-			}
-			report.Items = append(report.Items, item)
-		}
-	}
-
-	if len(pipes) == 0 {
-		return nil, apiErr.NewBadRequest("no available minions")
-	}
+	pipes, err := s.selectPipe(in.Options)
 
 	t := newTask(nextId, total, report)
 	s.tmu.Lock()
@@ -478,7 +490,7 @@ func (s *Scheduler) Handle(ctx context.Context, req *Request) (*Response, error)
 		}
 	}
 
-	err := t.execute(ctx)
+	err = t.execute(ctx)
 	if err != nil {
 		return nil, err
 	}

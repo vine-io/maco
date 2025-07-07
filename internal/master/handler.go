@@ -338,13 +338,11 @@ func (h *macoHandler) PrintMinion(ctx context.Context, req *pb.PrintMinionReques
 }
 
 func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallResponse, error) {
-	if req.Request.Timeout == 0 {
-		req.Request.Timeout = 10
+	in := req.Request
+	if in.Timeout == 0 {
+		in.Timeout = 10
 	}
-	in := &Request{
-		Call: req.Request,
-	}
-	out, err := h.sch.Handle(ctx, in)
+	out, err := h.sch.HandleCall(ctx, in)
 	if err != nil {
 		return nil, apiErr.Parse(err).ToStatus().Err()
 	}

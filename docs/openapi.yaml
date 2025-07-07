@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 19ba1b7b2b63367d68f3f02c7096469a7dd91e53
+    version: f8abb0de71ad898fbfc97c73edf1b9888893e2d9
 paths:
     /v1/call:
         post:
@@ -108,6 +108,26 @@ paths:
                                 $ref: '#/components/schemas/rpc.macopb.DeleteMinionResponse'
             security:
                 - bearerAuth: []
+    /v1/minions/action/print:
+        post:
+            tags:
+                - MacoRPC
+            operationId: MacoRPC_PrintMinion
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rpc.macopb.PrintMinionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rpc.macopb.PrintMinionResponse'
+            security:
+                - bearerAuth: []
     /v1/minions/action/reject:
         post:
             tags:
@@ -145,8 +165,10 @@ components:
         rpc.macopb.AcceptMinionRequest:
             type: object
             properties:
-                name:
-                    type: string
+                minions:
+                    type: array
+                    items:
+                        type: string
                 all:
                     type: boolean
                 includeRejected:
@@ -173,8 +195,10 @@ components:
         rpc.macopb.DeleteMinionRequest:
             type: object
             properties:
-                name:
-                    type: string
+                minions:
+                    type: array
+                    items:
+                        type: string
                 all:
                     type: boolean
         rpc.macopb.DeleteMinionResponse:
@@ -188,12 +212,7 @@ components:
             type: object
             properties:
                 minion:
-                    $ref: '#/components/schemas/types.Minion'
-                state:
-                    type: string
-                pubKey:
-                    type: string
-                    format: bytes
+                    $ref: '#/components/schemas/types.MinionKey'
         rpc.macopb.ListMinionsResponse:
             type: object
             properties:
@@ -220,11 +239,29 @@ components:
         rpc.macopb.PingResponse:
             type: object
             properties: {}
+        rpc.macopb.PrintMinionRequest:
+            type: object
+            properties:
+                minions:
+                    type: array
+                    items:
+                        type: string
+                all:
+                    type: boolean
+        rpc.macopb.PrintMinionResponse:
+            type: object
+            properties:
+                minions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/types.MinionKey'
         rpc.macopb.RejectMinionRequest:
             type: object
             properties:
-                name:
-                    type: string
+                minions:
+                    type: array
+                    items:
+                        type: string
                 all:
                     type: boolean
                 includeAccepted:
@@ -241,13 +278,13 @@ components:
         types.CallRequest:
             type: object
             properties:
+                options:
+                    allOf:
+                        - $ref: '#/components/schemas/types.SelectionOptions'
+                    description: 筛选符合的 minions
                 id:
                     type: string
                     description: 请求 id，确认请求唯一值
-                selector:
-                    allOf:
-                        - $ref: '#/components/schemas/types.Selector'
-                    description: 筛选符合的 minion
                 function:
                     type: string
                     description: '请求方法，使用.分割，确认对应模块下的方法，如: a.b.c'
@@ -264,6 +301,12 @@ components:
                 timeout:
                     type: string
                     description: 请求超时时长
+        types.LogicAnd:
+            type: object
+            properties: {}
+        types.LogicOr:
+            type: object
+            properties: {}
         types.Minion:
             type: object
             properties:
@@ -298,6 +341,16 @@ components:
                     type: string
                     description: the timestamp of minion offline
             description: Minion defines the base information of maco-minion
+        types.MinionKey:
+            type: object
+            properties:
+                minion:
+                    $ref: '#/components/schemas/types.Minion'
+                pubKey:
+                    type: string
+                    format: bytes
+                state:
+                    type: string
         types.Report:
             type: object
             properties:
@@ -335,47 +388,63 @@ components:
                     type: string
                 total:
                     type: string
-        types.Selector:
+        types.Selection:
             type: object
             properties:
-                minions:
+                host:
                     type: array
                     items:
                         type: string
-            description: |-
-                enum Op {
-                  OpEq = 0;
-                  OpGt = 1;
-                  OpGte = 2;
-                  OpLt = 3;
-                  OpLte = 4;
-                  OpLike = 5;
-                }
-
-                enum Logic {
-                  LgUnknown = 0;
-                  LgAnd = 1; // 逻辑与
-                  LgOr = 2; // 逻辑或
-                }
-
-                // Condition 筛选条件
-                message Field {
-                  Op op = 1;
-                  string query = 2;
-                  string value = 3;
-                }
-
-                // Segment 筛选语句
-                message Segment {
-                  // 连接逻辑
-                  Logic logic = 1;
-                  // minion 条件
-                  Field minion = 2;
-                  // minion grain 条件
-                  Field grain = 3;
-                }
-
-                // Selector minion 筛选器
+                    description: 使用 minions id 作为选择条件
+                hostPcre:
+                    type: string
+                    description: 使用 minions id 的正则表达式作为选择条件
+                idRange:
+                    type: string
+                    description: 使用 id range 作为选择条件
+                hostGroups:
+                    type: array
+                    items:
+                        type: string
+                    description: 使用 hostGroup 作为选择条件
+                ipCidr:
+                    type: string
+                    description: 使用 ip 地址作为选择条件
+                grains:
+                    allOf:
+                        - $ref: '#/components/schemas/types.SelectionPair'
+                    description: 使用 grains 作为选择条件
+                grainsPcre:
+                    allOf:
+                        - $ref: '#/components/schemas/types.SelectionPair'
+                    description: 使用 grains 正则表达式作为选择条件
+                pillar:
+                    allOf:
+                        - $ref: '#/components/schemas/types.SelectionPair'
+                    description: 使用 pillar 作为选择条件
+                pillarPcre:
+                    allOf:
+                        - $ref: '#/components/schemas/types.SelectionPair'
+                    description: 使用 pillar 正则表达式作为选择条件
+                and:
+                    $ref: '#/components/schemas/types.LogicAnd'
+                or:
+                    $ref: '#/components/schemas/types.LogicOr'
+            description: Selection minions 筛选器
+        types.SelectionOptions:
+            type: object
+            properties:
+                selections:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/types.Selection'
+        types.SelectionPair:
+            type: object
+            properties:
+                key:
+                    type: string
+                value:
+                    type: string
         types.Value:
             type: object
             properties:
