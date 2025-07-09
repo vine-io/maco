@@ -391,7 +391,7 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 	ok := s.minions.Contains(name)
 	s.pmu.RUnlock()
 	if !ok {
-		return fmt.Errorf("target is not be accepted")
+		return apiErr.NewBadRequest("target is not be accepted")
 	}
 
 	s.pmu.RLock()
@@ -399,7 +399,7 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 	s.pmu.RUnlock()
 
 	if !ok {
-		return fmt.Errorf("name is not online")
+		return apiErr.NewBadRequest("name is not online")
 	}
 
 	in := &Request{Call: req.Call}
@@ -407,16 +407,25 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 	return p.send(in)
 }
 
-func (s *Scheduler) selectPipe(options *types.SelectionOptions) ([]*pipe, error) {
+func (s *Scheduler) selectPipe(options *types.SelectionOptions) ([]*pipe, *types.Report, error) {
 	pipes := make([]*pipe, 0)
 	s.pmu.RLock()
 	defer s.pmu.RUnlock()
+
+	report := &types.Report{
+		Items:   make([]*types.ReportItem, 0),
+		Summary: &types.ReportSummary{},
+	}
+
+	for _, name := range s.minions.Values() {
+
+	}
 
 	//for _, p := range pipes {
 	//
 	//}
 
-	return pipes, nil
+	return pipes, report, nil
 }
 
 func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Response, error) {
@@ -424,11 +433,6 @@ func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Res
 	//req.Call
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(in.Timeout)*time.Second)
 	defer cancel()
-
-	report := &types.Report{
-		Items:   make([]*types.ReportItem, 0),
-		Summary: &types.ReportSummary{},
-	}
 
 	nextId := s.idAlloc.Get()
 	defer s.idAlloc.Free(nextId)
@@ -476,7 +480,10 @@ func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Res
 	//	return nil, apiErr.NewBadRequest("no available minions")
 	//}
 
-	pipes, err := s.selectPipe(in.Options)
+	if in.Options == nil {
+		return nil, apiErr.NewBadRequest("no selection options")
+	}
+	pipes, report, err := s.selectPipe(in.Options)
 
 	t := newTask(nextId, total, report)
 	s.tmu.Lock()

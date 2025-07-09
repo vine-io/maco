@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: f8abb0de71ad898fbfc97c73edf1b9888893e2d9
+    version: 2d782fb9617ca168f9d191e70a6e1211e147bdfe
 paths:
     /v1/call:
         post:
@@ -412,25 +412,32 @@ components:
                     description: 使用 ip 地址作为选择条件
                 grains:
                     allOf:
-                        - $ref: '#/components/schemas/types.SelectionPair'
+                        - $ref: '#/components/schemas/types.SelectionKV'
                     description: 使用 grains 作为选择条件
                 grainsPcre:
                     allOf:
-                        - $ref: '#/components/schemas/types.SelectionPair'
+                        - $ref: '#/components/schemas/types.SelectionKV'
                     description: 使用 grains 正则表达式作为选择条件
                 pillar:
                     allOf:
-                        - $ref: '#/components/schemas/types.SelectionPair'
+                        - $ref: '#/components/schemas/types.SelectionKV'
                     description: 使用 pillar 作为选择条件
                 pillarPcre:
                     allOf:
-                        - $ref: '#/components/schemas/types.SelectionPair'
+                        - $ref: '#/components/schemas/types.SelectionKV'
                     description: 使用 pillar 正则表达式作为选择条件
                 and:
                     $ref: '#/components/schemas/types.LogicAnd'
                 or:
                     $ref: '#/components/schemas/types.LogicOr'
             description: Selection minions 筛选器
+        types.SelectionKV:
+            type: object
+            properties:
+                key:
+                    type: string
+                value:
+                    type: string
         types.SelectionOptions:
             type: object
             properties:
@@ -438,13 +445,6 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/types.Selection'
-        types.SelectionPair:
-            type: object
-            properties:
-                key:
-                    type: string
-                value:
-                    type: string
         types.Value:
             type: object
             properties:

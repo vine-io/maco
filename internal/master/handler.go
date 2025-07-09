@@ -339,7 +339,12 @@ func (h *macoHandler) PrintMinion(ctx context.Context, req *pb.PrintMinionReques
 
 func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallResponse, error) {
 	in := req.Request
-	if in.Timeout == 0 {
+	if opt := in.Options; opt != nil {
+		if err := opt.Validate(); err != nil {
+			return nil, apiErr.NewBadRequest(err.Error()).ToStatus().Err()
+		}
+	}
+	if in.Timeout <= 0 {
 		in.Timeout = 10
 	}
 	out, err := h.sch.HandleCall(ctx, in)
@@ -396,9 +401,11 @@ func (h *internalHandler) Dispatch(stream pb.InternalRPC_DispatchServer) error {
 	}
 
 	minion := connMsg.Minion
-	grpcPeer, ok := peer.FromContext(stream.Context())
-	if ok {
-		minion.Ip = strings.Split(grpcPeer.Addr.String(), ":")[0]
+	if len(minion.Ip) == 0 {
+		grpcPeer, ok := peer.FromContext(stream.Context())
+		if ok {
+			minion.Ip = strings.Split(grpcPeer.Addr.String(), ":")[0]
+		}
 	}
 
 	minion.OnlineTimestamp = time.Now().Unix()
