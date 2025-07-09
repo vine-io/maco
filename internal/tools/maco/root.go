@@ -119,11 +119,14 @@ func runMacoCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx := context.Background()
-	in := &types.CallRequest{
-		Selector: &types.Selector{},
+	options, err := types.NewSelectionOptions(types.WithHosts(targets))
+	if err != nil {
+		fmt.Printf("target failed: %s\n", err.Error())
 	}
-	in.Selector.Minions = strings.Split(targets, ",")
+
+	ctx := context.Background()
+	in := &types.CallRequest{}
+	in.Options = options
 	in.Function = function
 	in.Args = argments
 

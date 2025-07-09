@@ -61,7 +61,7 @@ type SelectionTarget interface {
 	IP() string
 	Groups() []string
 	Grains() map[string]string
-	Pillar() map[string]string
+	Pillars() map[string]string
 }
 
 type SelectionOption func(*SelectionOptions)
@@ -92,7 +92,7 @@ type SelectionOption func(*SelectionOptions)
 //	opt3 := WithHosts("web01", false)
 func WithHosts(host string, or ...bool) SelectionOption {
 	s := &Selection{
-		Host: []string{host},
+		Hosts: []string{host},
 	}
 	f := true
 	if len(or) > 0 && !or[0] {
@@ -124,7 +124,7 @@ func WithHosts(host string, or ...bool) SelectionOption {
 //	opt2 := WithList([]string{"db01", "db02"}, false)
 func WithList(hosts []string, lg ...bool) SelectionOption {
 	s := &Selection{
-		Host: hosts,
+		Hosts: hosts,
 	}
 	f := true
 	if len(lg) > 0 && !lg[0] {
@@ -557,12 +557,12 @@ func (m *SelectionOptions) Validate() error {
 //   - hit: id 匹配是否命中
 func (m *Selection) MatchId(id string) (bool, bool) {
 	hit := false
-	if len(m.Host) != 0 {
+	if len(m.Hosts) != 0 {
 		hit = true
-		if m.Host[0] == "*" {
+		if m.Hosts[0] == "*" {
 			return true, hit
 		}
-		for _, value := range m.Host {
+		for _, value := range m.Hosts {
 			if value == "*" || value == id {
 				return true, hit
 			}
@@ -640,8 +640,8 @@ func (m *Selection) MatchIP(ip string) (bool, bool) {
 //	- And: "and"
 //	- Or: "or"
 func (m *Selection) ToText() string {
-	if len(m.Host) != 0 {
-		return strings.Join(m.Host, ",")
+	if len(m.Hosts) != 0 {
+		return strings.Join(m.Hosts, ",")
 	}
 	if len(m.HostPcre) != 0 {
 		return fmt.Sprintf("E@%s", m.HostPcre)
@@ -838,9 +838,9 @@ func ParseSelection(text string) (*SelectionOptions, error) {
 				selection = &Selection{Or: &LogicOr{}}
 			case "":
 				if value == "*" {
-					selection = &Selection{Host: []string{"*"}}
+					selection = &Selection{Hosts: []string{"*"}}
 				} else {
-					selection = &Selection{Host: strings.Split(value, ",")}
+					selection = &Selection{Hosts: strings.Split(value, ",")}
 				}
 			}
 
@@ -878,13 +878,14 @@ func ParseSelection(text string) (*SelectionOptions, error) {
 // @params:
 //   - target: 要匹配的目标对象，必须实现 SelectionTarget 接口
 //   - simple: 简化模式标志
-//   - true: 仅匹配基本条件（ID、IP、主机组），跳过 Grains 和 Pillar 匹配
-//   - false: 完整匹配所有条件类型
+//     true: 仅匹配基本条件（ID、IP、主机组），跳过 Grains 和 Pillar 匹配
+//     false: 完整匹配所有条件类型
 //
 // @returns:
-//   - bool: 匹配结果
-//   - true: 目标匹配选择条件
-//   - false: 目标不匹配选择条件
+//   - match: 匹配结果
+//     true: 目标匹配选择条件
+//     false: 目标不匹配选择条件
+//   - hit: 匹配是否命中
 //
 // @note:
 //   - 逻辑运算符按顺序处理：先处理的条件结果会影响后续的逻辑运算
@@ -901,8 +902,9 @@ func ParseSelection(text string) (*SelectionOptions, error) {
 //
 //	// 简化匹配（仅基本条件）
 //	matched := options.MatchTarget(target, true)
-func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool {
+func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) (bool, bool) {
 	result := true
+	resultHit := false
 	var lastMatch bool
 	for _, s := range m.Selections {
 		if s.And != nil {
@@ -920,6 +922,7 @@ func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool
 			matched, hit := s.MatchId(id)
 			if hit {
 				lastMatch = matched
+				resultHit = true
 				continue
 			}
 		}
@@ -929,6 +932,7 @@ func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool
 			matched, hit := s.MatchIP(ip)
 			if hit {
 				lastMatch = matched
+				resultHit = true
 				continue
 			}
 		}
@@ -937,14 +941,14 @@ func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool
 		if len(groups) != 0 {
 			for _, g := range groups {
 				for _, h := range s.HostGroups {
+					resultHit = true
 					if g == h {
 						lastMatch = true
+						goto GROUPEXIT
 					}
 				}
 			}
-			if lastMatch {
-				continue
-			}
+		GROUPEXIT:
 		}
 
 		if simple {
@@ -954,13 +958,16 @@ func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool
 		grains := target.Grains()
 		if len(grains) != 0 {
 			if kv := s.Grains; kv != nil {
+				resultHit = true
 				value, ok := grains[kv.Key]
-				if ok && value == kv.Value {
-					lastMatch = true
+				if ok {
+					resultHit = true
+					lastMatch = value == kv.Value
 				}
 				continue
 			}
 			if kv := s.GrainsPcre; kv != nil {
+				resultHit = true
 				value, ok := grains[kv.Key]
 				if ok {
 					re, err := regexp.CompilePOSIX(kv.Value)
@@ -972,18 +979,20 @@ func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool
 			}
 		}
 
-		pillars := target.Pillar()
+		pillars := target.Pillars()
 		if len(pillars) != 0 {
 			if kv := s.Pillar; kv != nil {
 				value, ok := pillars[kv.Key]
-				if ok && value == kv.Value {
-					lastMatch = true
+				if ok {
+					resultHit = true
+					lastMatch = value == kv.Value
 				}
 				continue
 			}
 			if kv := s.PillarPcre; kv != nil {
 				value, ok := pillars[kv.Key]
 				if ok {
+					resultHit = true
 					re, err := regexp.CompilePOSIX(kv.Value)
 					if err == nil {
 						lastMatch = re.MatchString(value)
@@ -994,7 +1003,7 @@ func (m *SelectionOptions) MatchTarget(target SelectionTarget, simple bool) bool
 		}
 	}
 
-	return result && lastMatch
+	return result && lastMatch, resultHit
 }
 
 // ToText 将SelectionOptions转换为文本表示

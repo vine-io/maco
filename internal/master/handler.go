@@ -353,7 +353,7 @@ func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallRe
 	}
 
 	rsp := &pb.CallResponse{
-		Report: out.Report,
+		Report: out.Report.Report,
 	}
 	return rsp, nil
 }

@@ -35,6 +35,22 @@ type RsaPair struct {
 	Public  []byte
 }
 
+func (p *RsaPair) Validate() error {
+	text := "test message"
+	data, err := EncodeByRSA([]byte(text), p.Public)
+	if err != nil {
+		return fmt.Errorf("invalid public key: %w", err)
+	}
+	decoded, err := DecodeByRSA(data, p.Private)
+	if err != nil {
+		return fmt.Errorf("invalid public key: %w", err)
+	}
+	if string(decoded) != text {
+		return fmt.Errorf("invalid RSA pair")
+	}
+	return nil
+}
+
 // GenerateRSA generates rsa key pair
 func GenerateRSA(bits int, logo string) (*RsaPair, error) {
 	if bits%2048 != 0 {

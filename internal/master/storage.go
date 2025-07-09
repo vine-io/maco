@@ -139,6 +139,9 @@ func newStorage(opt *Options) (*Storage, error) {
 			return nil, fmt.Errorf("save master public key: %w", err)
 		}
 	}
+	if err = pair.Validate(); err != nil {
+		return nil, err
+	}
 
 	if err = fsutil.LoadDir(filepath.Join(root, minionPath)); err != nil {
 		return nil, err

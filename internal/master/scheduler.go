@@ -66,8 +66,45 @@ type Request struct {
 	Call *types.CallRequest
 }
 
+type TaskReport struct {
+	*types.Report
+	// 任务运行中，minion name 和对应 ReportItem 列表索引的映射
+	nameIdx map[string]int
+}
+
 type Response struct {
-	Report *types.Report
+	Report *TaskReport
+}
+
+var _ types.SelectionTarget = (*Node)(nil)
+
+type Node struct {
+	id      string
+	ip      string
+	idx     int
+	groups  []string
+	grains  map[string]string
+	pillars map[string]string
+}
+
+func (t *Node) Id() string {
+	return t.id
+}
+
+func (t *Node) IP() string {
+	return t.ip
+}
+
+func (t *Node) Groups() []string {
+	return t.groups
+}
+
+func (t *Node) Grains() map[string]string {
+	return t.grains
+}
+
+func (t *Node) Pillars() map[string]string {
+	return t.pillars
 }
 
 // This is an application-wide global ID allocator.  Unfortunately we need
@@ -214,7 +251,7 @@ func (p *pipe) stop() {
 	}
 }
 
-type jobPack struct {
+type tackPack struct {
 	name string
 	call *types.CallResponse
 }
@@ -225,24 +262,24 @@ type task struct {
 	gets  uint32
 	total uint32
 
-	ch chan *jobPack
+	ch chan *tackPack
 
-	report *types.Report
+	report *TaskReport
 }
 
-func newTask(id uint64, total uint32, report *types.Report) *task {
+func newTask(id uint64, report *TaskReport) *task {
 
 	j := &task{
 		id:     id,
-		total:  total,
-		ch:     make(chan *jobPack, 1),
+		total:  uint32(report.Summary.Total),
+		ch:     make(chan *tackPack, 1),
 		report: report,
 	}
 	return j
 }
 
 func (t *task) notify(name string, payload *types.CallResponse) {
-	pack := &jobPack{
+	pack := &tackPack{
 		name: name,
 		call: payload,
 	}
@@ -261,20 +298,31 @@ func (t *task) execute(ctx context.Context) error {
 				continue
 			}
 
-			item := &types.ReportItem{
-				Minion: p.name,
-				Error:  call.Error,
-				Data:   call.Result,
+			var item *types.ReportItem
+			idx, ok := t.report.nameIdx[p.name]
+			if ok {
+				item = t.report.Items[idx]
 			}
+
+			if item == nil {
+				item = &types.ReportItem{
+					Minion: p.name,
+					Error:  call.Error,
+					Data:   call.Result,
+				}
+				t.report.Items = append(t.report.Items, item)
+				idx = len(t.report.Items) - 1
+			} else {
+				item.Error = call.Error
+				item.Data = call.Result
+			}
+
 			switch call.Type {
 			case types.ResultType_ResultSkip:
 			case types.ResultType_ResultOk:
 				item.Result = true
 			case types.ResultType_ResultError:
 			}
-
-			//report := t.report
-			t.report.Items = append(t.report.Items, item)
 
 			if t.gets >= t.total {
 				return nil
@@ -288,9 +336,8 @@ type Scheduler struct {
 	// 建立连接的 minion
 	pipes *haxmap.Map[string, *pipe]
 
-	minions *dsutil.SafeHashSet[string]
-	// 所有离线的 minion
-	downMinions *dsutil.SafeHashSet[string]
+	// 所有 accepted, autoSigned 的在线 minion
+	minions *dsutil.SafeHashMap[string, *Node]
 
 	storage *Storage
 
@@ -306,19 +353,7 @@ type Scheduler struct {
 
 func NewScheduler(storage *Storage) (*Scheduler, error) {
 
-	minions := dsutil.NewSafeHashSet[string]()
-	downMinions := dsutil.NewSafeHashSet[string]()
-	accepts, _ := storage.GetMinions(types.Accepted)
-	autos, _ := storage.GetMinions(types.AutoSign)
-	for _, name := range accepts {
-		minions.Add(name)
-		downMinions.Add(name)
-	}
-	for _, name := range autos {
-		minions.Add(name)
-		downMinions.Add(name)
-	}
-
+	minions := dsutil.NewSafeHashMap[string, *Node]()
 	pipes := haxmap.New[string, *pipe]()
 
 	idAlloc := newIDAllocator()
@@ -329,7 +364,6 @@ func NewScheduler(storage *Storage) (*Scheduler, error) {
 	sch := &Scheduler{
 		pipes:       pipes,
 		minions:     minions,
-		downMinions: downMinions,
 		storage:     storage,
 		idAlloc:     idAlloc,
 		taskStore:   taskStore,
@@ -367,7 +401,7 @@ func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (
 		ip:      info.Minion.Ip,
 		groups:  make([]string, 0),
 		rsaPair: pair,
-		pubKey:  pair.Public,
+		pubKey:  in.MinionPublicKey,
 		stream:  stream,
 		mch:     s.mch,
 		stopCh:  make(chan struct{}, 1),
@@ -378,18 +412,22 @@ func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (
 	s.pmu.Unlock()
 
 	if state == types.Accepted || state == types.AutoSign {
-		s.minions.Add(name)
-	}
+		target := &Node{
+			id:      p.name,
+			ip:      p.ip,
+			groups:  make([]string, 0),
+			grains:  make(map[string]string),
+			pillars: map[string]string{},
+		}
 
-	s.downMinions.Remove(name)
+		s.minions.Set(p.name, target)
+	}
 
 	return p, info, nil
 }
 
 func (s *Scheduler) sendTo(name string, req *Request) error {
-	s.pmu.RLock()
 	ok := s.minions.Contains(name)
-	s.pmu.RUnlock()
 	if !ok {
 		return apiErr.NewBadRequest("target is not be accepted")
 	}
@@ -407,30 +445,95 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 	return p.send(in)
 }
 
-func (s *Scheduler) selectPipe(options *types.SelectionOptions) ([]*pipe, *types.Report, error) {
+func (s *Scheduler) selectPipe(options *types.SelectionOptions) ([]*pipe, *TaskReport, error) {
 	pipes := make([]*pipe, 0)
-	s.pmu.RLock()
-	defer s.pmu.RUnlock()
 
 	report := &types.Report{
 		Items:   make([]*types.ReportItem, 0),
 		Summary: &types.ReportSummary{},
 	}
-
-	for _, name := range s.minions.Values() {
-
+	tr := &TaskReport{
+		Report:  report,
+		nameIdx: make(map[string]int),
 	}
 
-	//for _, p := range pipes {
-	//
-	//}
+	addPipe := func(name string) {
+		s.pmu.RLock()
+		p, ok := s.pipes.Get(name)
+		s.pmu.RUnlock()
+		if !ok {
+			return
+		}
 
-	return pipes, report, nil
+		pipes = append(pipes, p)
+
+		ri := &types.ReportItem{
+			Minion: name,
+		}
+		report.Items = append(report.Items, ri)
+		idx := len(report.Items) - 1
+		tr.nameIdx[name] = idx
+
+		report.Summary.Total += 1
+	}
+
+	if len(options.Selections) == 1 {
+		first := options.Selections[0]
+		if len(first.Hosts) != 0 {
+			if len(first.Hosts) == 1 && first.Hosts[0] == "*" {
+				// 所有 minions 执行命令
+				s.minions.Range(func(key string, target *Node) bool {
+					addPipe(key)
+					return true
+				})
+			} else {
+				for _, host := range first.Hosts {
+					exists := s.minions.Contains(host)
+					if exists {
+						addPipe(host)
+					} else {
+						s.pmu.RLock()
+						_, ok := s.pipes.Get(host)
+						s.pmu.RUnlock()
+						if !ok {
+							item := &types.ReportItem{
+								Minion: host,
+								Result: false,
+								Error:  fmt.Sprintf("minion %s is not online", host),
+							}
+							report.Items = append(report.Items, item)
+						} else {
+							item := &types.ReportItem{
+								Minion: host,
+								Result: false,
+								Error:  fmt.Sprintf("minion %s is not accepted", host),
+							}
+							report.Items = append(report.Items, item)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		s.minions.Range(func(key string, target *Node) bool {
+			matched, hit := options.MatchTarget(target, true)
+			if matched || !hit {
+				addPipe(key)
+			}
+
+			return true
+		})
+	}
+
+	if len(pipes) == 0 {
+		return nil, nil, fmt.Errorf("no target selected")
+	}
+
+	return pipes, tr, nil
 }
 
 func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Response, error) {
 
-	//req.Call
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(in.Timeout)*time.Second)
 	defer cancel()
 
@@ -439,53 +542,15 @@ func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Res
 
 	in.Id = nextId
 
-	targets := make([]string, 0)
-	//if in.Selector != nil {
-	//	targets = in.Selector.Minions
-	//}
-	if len(targets) == 0 {
-		return nil, apiErr.NewBadRequest("no targets")
-	}
-
-	total := uint32(0)
-	//pipes := make([]*pipe, 0)
-	//for _, name := range targets {
-	//	if !s.minions.Contains(name) {
-	//		item := &types.ReportItem{
-	//			Minion: name,
-	//			Result: false,
-	//			Error:  fmt.Sprintf("minion %s is not accepted", name),
-	//		}
-	//		report.Items = append(report.Items, item)
-	//		continue
-	//	}
-	//
-	//	s.pmu.RLock()
-	//	p, ok := s.pipes.Get(name)
-	//	s.pmu.RUnlock()
-	//	if ok {
-	//		total += 1
-	//		pipes = append(pipes, p)
-	//	} else {
-	//		item := &types.ReportItem{
-	//			Minion: name,
-	//			Result: false,
-	//			Error:  fmt.Sprintf("minion %s is not online", name),
-	//		}
-	//		report.Items = append(report.Items, item)
-	//	}
-	//}
-	//
-	//if len(pipes) == 0 {
-	//	return nil, apiErr.NewBadRequest("no available minions")
-	//}
-
 	if in.Options == nil {
 		return nil, apiErr.NewBadRequest("no selection options")
 	}
 	pipes, report, err := s.selectPipe(in.Options)
+	if err != nil {
+		return nil, apiErr.NewBadRequest(err.Error())
+	}
 
-	t := newTask(nextId, total, report)
+	t := newTask(nextId, report)
 	s.tmu.Lock()
 	s.taskStore[nextId] = t
 	s.tmu.Unlock()
@@ -555,7 +620,21 @@ func (s *Scheduler) Run(ctx context.Context) {
 				} else {
 					switch me.state {
 					case types.Accepted, types.AutoSign:
-						s.minions.Add(me.minion)
+
+						s.pmu.RLock()
+						p, exists := s.pipes.Get(me.minion)
+						s.pmu.RUnlock()
+
+						if exists {
+							target := &Node{
+								id:      p.name,
+								ip:      p.ip,
+								groups:  make([]string, 0),
+								grains:  make(map[string]string),
+								pillars: map[string]string{},
+							}
+							s.minions.Set(p.name, target)
+						}
 					case types.Rejected, types.Denied:
 						s.minions.Remove(me.minion)
 					}
@@ -574,7 +653,6 @@ func (s *Scheduler) removePipe(name string) {
 	s.pipes.Del(name)
 	s.pmu.Unlock()
 
-	s.downMinions.Add(name)
 	minion, _ := s.storage.getMinion(name)
 	if minion != nil {
 		minion.OfflineTimestamp = time.Now().Unix()

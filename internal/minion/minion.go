@@ -229,5 +229,9 @@ func (m *Minion) generateRSA() (*pemutil.RsaPair, error) {
 			return nil, fmt.Errorf("save minion public key: %w", err)
 		}
 	}
+	if err = pair.Validate(); err != nil {
+		return nil, err
+	}
+
 	return pair, nil
 }

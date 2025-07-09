@@ -107,7 +107,7 @@ func (m *mockSelectionTarget) Grains() map[string]string {
 	return m.grains
 }
 
-func (m *mockSelectionTarget) Pillar() map[string]string {
+func (m *mockSelectionTarget) Pillars() map[string]string {
 	return m.pillars
 }
 
@@ -126,7 +126,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			name: "match host list - exact match (BUG: calls MatchIP instead of MatchId)",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1", "node2"}},
+					{Hosts: []string{"node1", "node2"}},
 				},
 			},
 			target:   &mockSelectionTarget{id: "node1", ip: "192.168.1.1", groups: []string{"web"}},
@@ -137,7 +137,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			name: "match host list - no match",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1", "node2"}},
+					{Hosts: []string{"node1", "node2"}},
 				},
 			},
 			target:   &mockSelectionTarget{id: "node3", ip: "192.168.1.1", groups: []string{"web"}},
@@ -148,7 +148,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			name: "match all hosts with * (BUG: calls MatchIP instead of MatchId)",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"*"}},
+					{Hosts: []string{"*"}},
 				},
 			},
 			target:   &mockSelectionTarget{id: "any-node", ip: "192.168.1.1", groups: []string{"web"}},
@@ -264,7 +264,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			options: &SelectionOptions{
 				Selections: []*Selection{
 					{
-						Host:       []string{"node1"}, // This won't match due to bug
+						Hosts:      []string{"node1"}, // This won't match due to bug
 						IpCidr:     "192.168.1.0/24",  // This won't match due to bug
 						HostGroups: []string{"web"},   // This will match
 					},
@@ -279,7 +279,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			options: &SelectionOptions{
 				Selections: []*Selection{
 					{
-						Host:       []string{"node1"}, // This won't match due to bug
+						Hosts:      []string{"node1"}, // This won't match due to bug
 						IpCidr:     "192.168.1.0/24",  // This won't match due to bug
 						HostGroups: []string{"api"},   // This won't match
 					},
@@ -294,7 +294,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			name: "empty target ID",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1"}},
+					{Hosts: []string{"node1"}},
 				},
 			},
 			target:   &mockSelectionTarget{id: "", ip: "192.168.1.1", groups: []string{"web"}},
@@ -369,7 +369,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			name: "logical AND - group matching works",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1"}},     // Won't match due to bug
+					{Hosts: []string{"node1"}},    // Won't match due to bug
 					{And: &LogicAnd{}},            // AND operator
 					{HostGroups: []string{"web"}}, // Would match
 				},
@@ -382,7 +382,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 			name: "logical OR - group matching works",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1"}},     // Won't match due to bug
+					{Hosts: []string{"node1"}},    // Won't match due to bug
 					{Or: &LogicOr{}},              // OR operator
 					{HostGroups: []string{"web"}}, // Would match
 				},
@@ -440,7 +440,7 @@ func TestSelectionOptions_Match(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.options.MatchTarget(tt.target, false)
+			result, _ := tt.options.MatchTarget(tt.target, false)
 			assert.Equal(t, tt.expected, result, "Match result should match expected value\nComment: %s", tt.comment)
 		})
 	}
@@ -460,7 +460,7 @@ func TestSelectionOptions_Match_ExpectedBehavior(t *testing.T) {
 			name: "EXPECTED: match host list - exact match",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1", "node2"}},
+					{Hosts: []string{"node1", "node2"}},
 				},
 			},
 			target:   &mockSelectionTarget{id: "node1", ip: "192.168.1.1", groups: []string{"web"}},
@@ -471,7 +471,7 @@ func TestSelectionOptions_Match_ExpectedBehavior(t *testing.T) {
 			name: "EXPECTED: match all hosts with *",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"*"}},
+					{Hosts: []string{"*"}},
 				},
 			},
 			target:   &mockSelectionTarget{id: "any-node", ip: "192.168.1.1", groups: []string{"web"}},
@@ -493,7 +493,7 @@ func TestSelectionOptions_Match_ExpectedBehavior(t *testing.T) {
 			name: "EXPECTED: logical OR - should work",
 			options: &SelectionOptions{
 				Selections: []*Selection{
-					{Host: []string{"node1"}},
+					{Hosts: []string{"node1"}},
 					{Or: &LogicOr{}},
 					{HostGroups: []string{"web"}},
 				},
@@ -506,7 +506,7 @@ func TestSelectionOptions_Match_ExpectedBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.options.MatchTarget(tt.target, false)
+			result, _ := tt.options.MatchTarget(tt.target, false)
 			assert.Equal(t, tt.expected, result, "Match result should match expected value\nComment: %s", tt.comment)
 		})
 	}

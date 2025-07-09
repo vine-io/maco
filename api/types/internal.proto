@@ -113,7 +113,7 @@ message LogicOr {}
 // Selection minions 筛选器
 message Selection {
   // 使用 minions id 作为选择条件
-  repeated string host = 1;
+  repeated string hosts = 1;
   // 使用 minions id 的正则表达式作为选择条件
   string hostPcre = 2;
   // 使用 id range 作为选择条件

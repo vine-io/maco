@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 2d782fb9617ca168f9d191e70a6e1211e147bdfe
+    version: 2c4318529ce332d805dbe4d292f8b102a358b52c
 paths:
     /v1/call:
         post:
@@ -391,7 +391,7 @@ components:
         types.Selection:
             type: object
             properties:
-                host:
+                hosts:
                     type: array
                     items:
                         type: string
