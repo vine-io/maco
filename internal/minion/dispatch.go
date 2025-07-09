@@ -88,7 +88,7 @@ func runCmd(ctx context.Context, in *types.CallRequest) (*types.CallResponse, er
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	shell := fmt.Sprintf("%s", in.Function)
+	shell := fmt.Sprintf("")
 	for _, arg := range in.Args {
 		shell += " " + arg
 	}

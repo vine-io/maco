@@ -308,20 +308,26 @@ func (t *task) execute(ctx context.Context) error {
 				item = &types.ReportItem{
 					Minion: p.name,
 					Error:  call.Error,
-					Data:   call.Result,
+					Data:   string(call.Result),
 				}
 				t.report.Items = append(t.report.Items, item)
 				idx = len(t.report.Items) - 1
 			} else {
 				item.Error = call.Error
-				item.Data = call.Result
+				item.Data = string(call.Result)
+			}
+
+			if call.Changes != nil {
+				t.report.Summary.Changes += 1
 			}
 
 			switch call.Type {
 			case types.ResultType_ResultSkip:
 			case types.ResultType_ResultOk:
 				item.Result = true
+				t.report.Summary.Success += 1
 			case types.ResultType_ResultError:
+				t.report.Summary.Failed += 1
 			}
 
 			if t.gets >= t.total {
@@ -429,7 +435,7 @@ func (s *Scheduler) AddStream(in *types.ConnectRequest, stream DispatchStream) (
 func (s *Scheduler) sendTo(name string, req *Request) error {
 	ok := s.minions.Contains(name)
 	if !ok {
-		return apiErr.NewBadRequest("target is not be accepted")
+		return apiErr.NewBadRequestf("minion '%s' is not be accepted", name)
 	}
 
 	s.pmu.RLock()
@@ -437,7 +443,7 @@ func (s *Scheduler) sendTo(name string, req *Request) error {
 	s.pmu.RUnlock()
 
 	if !ok {
-		return apiErr.NewBadRequest("name is not online")
+		return apiErr.NewBadRequestf("minion '%s' is not online", name)
 	}
 
 	in := &Request{Call: req.Call}
@@ -556,7 +562,7 @@ func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Res
 	s.tmu.Unlock()
 
 	for _, p := range pipes {
-		err := p.send(&Request{Call: in})
+		err = p.send(&Request{Call: in})
 		if err != nil {
 			zap.S().Errorf("send msg to %s: %v", p.name, err)
 		}

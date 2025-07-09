@@ -148,10 +148,8 @@ message CallRequest {
   string function = 3;
   // 方法参数
   repeated string args = 4;
-  // 加密参数
-  map<string, Value> pillars = 5;
   // 请求超时时长
-  int64 timeout = 6;
+  int64 timeout = 5;
 }
 
 message CallResponse {
@@ -185,7 +183,7 @@ message ReportItem {
   int64 endTimestamp = 3;
   bool result = 5;
   string error = 6;
-  bytes data = 7;
+  string data = 7;
 }
 
 message ReportSummary {

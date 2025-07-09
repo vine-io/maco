@@ -78,22 +78,12 @@ func runAcceptKeysCmd(cmd *cobra.Command, args []string) error {
 	includeDenied, _ := flagSet.GetBool("include-denied")
 	includeRejected, _ := flagSet.GetBool("include-rejected")
 
-	mc, err := utils.ClientFromFlags(globalSet)
-	if err != nil {
-		return err
-	}
-
 	minions := []string{}
 	if len(args) > 0 {
 		minions = strings.Split(args[0], ",")
 	}
 	if (len(minions) == 0 || minions[0] == "") && all {
 		return errors.New("no minions specified")
-	}
-
-	out, err := mc.AcceptMinion(ctx, minions, all, includeRejected, includeDenied)
-	if err != nil {
-		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
 	output := cmd.OutOrStdout()
@@ -108,6 +98,16 @@ func runAcceptKeysCmd(cmd *cobra.Command, args []string) error {
 		}
 		defer fd.Close()
 		output = fd
+	}
+
+	mc, err := utils.ClientFromFlags(globalSet)
+	if err != nil {
+		return err
+	}
+
+	out, err := mc.AcceptMinion(ctx, minions, all, includeRejected, includeDenied)
+	if err != nil {
+		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
 	mapping := map[string][]string{
@@ -185,22 +185,12 @@ func runRejectKeysCmd(cmd *cobra.Command, args []string) error {
 	includeAccepted, _ := flagSet.GetBool("include-accepted")
 	includeDenied, _ := flagSet.GetBool("include-denied")
 
-	mc, err := utils.ClientFromFlags(globalSet)
-	if err != nil {
-		return err
-	}
-
 	minions := []string{}
 	if len(args) > 0 {
 		minions = strings.Split(args[0], ",")
 	}
 	if (len(minions) == 0 || minions[0] == "") && all {
 		return errors.New("no minions specified")
-	}
-
-	out, err := mc.RejectMinion(ctx, minions, all, includeAccepted, includeDenied)
-	if err != nil {
-		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
 	output := cmd.OutOrStdout()
@@ -215,6 +205,16 @@ func runRejectKeysCmd(cmd *cobra.Command, args []string) error {
 		}
 		defer fd.Close()
 		output = fd
+	}
+
+	mc, err := utils.ClientFromFlags(globalSet)
+	if err != nil {
+		return err
+	}
+
+	out, err := mc.RejectMinion(ctx, minions, all, includeAccepted, includeDenied)
+	if err != nil {
+		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
 	mapping := map[string][]string{
@@ -288,22 +288,12 @@ func runDeleteKeysCmd(cmd *cobra.Command, args []string) error {
 
 	all, _ := flagSet.GetBool("all")
 
-	mc, err := utils.ClientFromFlags(globalSet)
-	if err != nil {
-		return err
-	}
-
 	minions := []string{}
 	if len(args) > 0 {
 		minions = strings.Split(args[0], ",")
 	}
 	if (len(minions) == 0 || minions[0] == "") && all {
 		return errors.New("no minions specified")
-	}
-
-	out, err := mc.DeleteMinion(ctx, minions, all)
-	if err != nil {
-		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
 	output := cmd.OutOrStdout()
@@ -318,6 +308,16 @@ func runDeleteKeysCmd(cmd *cobra.Command, args []string) error {
 		}
 		defer fd.Close()
 		output = fd
+	}
+
+	mc, err := utils.ClientFromFlags(globalSet)
+	if err != nil {
+		return err
+	}
+
+	out, err := mc.DeleteMinion(ctx, minions, all)
+	if err != nil {
+		return fmt.Errorf("%v", apiErr.Parse(err).Detail)
 	}
 
 	mapping := map[string][]string{

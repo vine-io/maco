@@ -81,6 +81,20 @@ func runListKeysCmd(cmd *cobra.Command, args []string) error {
 	outputFile, _ := globalSet.GetString("output")
 	outputAppend, _ := globalSet.GetBool("output-append")
 
+	output := cmd.OutOrStdout()
+	if len(outputFile) != 0 {
+		mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+		if outputAppend {
+			mode = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+		fd, fdErr := os.OpenFile(outputFile, mode, 0755)
+		if fdErr != nil {
+			return fmt.Errorf("open output file: %w", fdErr)
+		}
+		defer fd.Close()
+		output = fd
+	}
+
 	mc, err := utils.ClientFromFlags(globalSet)
 	if err != nil {
 		return err
@@ -104,20 +118,6 @@ func runListKeysCmd(cmd *cobra.Command, args []string) error {
 		Denied:     out[types.Denied],
 		Unaccepted: out[types.Unaccepted],
 		Rejected:   out[types.Rejected],
-	}
-
-	output := cmd.OutOrStdout()
-	if len(outputFile) != 0 {
-		mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-		if outputAppend {
-			mode = os.O_WRONLY | os.O_CREATE | os.O_APPEND
-		}
-		fd, fdErr := os.OpenFile(outputFile, mode, 0755)
-		if fdErr != nil {
-			return fmt.Errorf("open output file: %w", fdErr)
-		}
-		defer fd.Close()
-		output = fd
 	}
 
 	var data []byte
@@ -199,17 +199,31 @@ func runPrintKeysCmd(cmd *cobra.Command, args []string) error {
 
 	all, _ := flagSet.GetBool("all")
 
-	mc, err := utils.ClientFromFlags(globalSet)
-	if err != nil {
-		return err
-	}
-
 	minions := []string{}
 	if len(args) > 0 {
 		minions = strings.Split(args[0], ",")
 	}
 	if (len(minions) == 0 || minions[0] == "") && !all {
 		return errors.New("no minions specified")
+	}
+
+	output := cmd.OutOrStdout()
+	if len(outputFile) != 0 {
+		mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+		if outputAppend {
+			mode = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+		fd, fdErr := os.OpenFile(outputFile, mode, 0755)
+		if fdErr != nil {
+			return fmt.Errorf("open output file: %w", fdErr)
+		}
+		defer fd.Close()
+		output = fd
+	}
+
+	mc, err := utils.ClientFromFlags(globalSet)
+	if err != nil {
+		return err
 	}
 
 	out, err := mc.PrintMinion(ctx, minions, all)
@@ -238,20 +252,6 @@ func runPrintKeysCmd(cmd *cobra.Command, args []string) error {
 		case types.Rejected:
 			mapping.Rejected = append(mapping.Rejected, key)
 		}
-	}
-
-	output := cmd.OutOrStdout()
-	if len(outputFile) != 0 {
-		mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-		if outputAppend {
-			mode = os.O_WRONLY | os.O_CREATE | os.O_APPEND
-		}
-		fd, fdErr := os.OpenFile(outputFile, mode, 0755)
-		if fdErr != nil {
-			return fmt.Errorf("open output file: %w", fdErr)
-		}
-		defer fd.Close()
-		output = fd
 	}
 
 	var data []byte

@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 2c4318529ce332d805dbe4d292f8b102a358b52c
+    version: 7d5ab5421f0c6cb1cdca229a4be945daf0294521
 paths:
     /v1/call:
         post:
@@ -293,11 +293,6 @@ components:
                     items:
                         type: string
                     description: 方法参数
-                pillars:
-                    type: object
-                    additionalProperties:
-                        $ref: '#/components/schemas/types.Value'
-                    description: 加密参数
                 timeout:
                     type: string
                     description: 请求超时时长
@@ -376,7 +371,6 @@ components:
                     type: string
                 data:
                     type: string
-                    format: bytes
         types.ReportSummary:
             type: object
             properties:
@@ -445,13 +439,5 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/types.Selection'
-        types.Value:
-            type: object
-            properties:
-                type:
-                    type: integer
-                    format: enum
-                data:
-                    type: string
 tags:
     - name: MacoRPC
