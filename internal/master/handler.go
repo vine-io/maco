@@ -339,14 +339,24 @@ func (h *macoHandler) PrintMinion(ctx context.Context, req *pb.PrintMinionReques
 
 func (h *macoHandler) Call(ctx context.Context, req *pb.CallRequest) (*pb.CallResponse, error) {
 	in := req.Request
+	if opt := in.SelectionOptions; opt != nil {
+		if err := opt.Validate(); err != nil {
+			return nil, apiErr.NewBadRequestf("invalid selection options: %v", err).ToStatus().Err()
+		}
+	} else {
+		return nil, apiErr.NewBadRequest("selection options is required").ToStatus().Err()
+	}
 	if opt := in.Options; opt != nil {
 		if err := opt.Validate(); err != nil {
-			return nil, apiErr.NewBadRequest(err.Error()).ToStatus().Err()
+			return nil, apiErr.NewBadRequestf("invalid call options: %v", err).ToStatus().Err()
 		}
+	} else {
+		return nil, apiErr.NewBadRequest("call options is required").ToStatus().Err()
 	}
-	if in.Timeout <= 0 {
-		in.Timeout = 10
+	if in.Function == "" {
+		return nil, apiErr.NewBadRequest("function name is required").ToStatus().Err()
 	}
+
 	out, err := h.sch.HandleCall(ctx, in)
 	if err != nil {
 		return nil, apiErr.Parse(err).ToStatus().Err()

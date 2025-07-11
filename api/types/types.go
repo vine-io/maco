@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"strings"
 
+	apiErr "github.com/vine-io/maco/api/errors"
 	"github.com/vine-io/maco/pkg/iprange"
 )
 
@@ -1049,4 +1050,14 @@ func (m *SelectionOptions) ToText() string {
 	}
 
 	return buf.String()
+}
+
+func (m *CallOptions) Validate() error {
+	if m.Format != "glob" && m.Format != "yaml" && m.Format != "json" {
+		return apiErr.NewBadRequest("invalid format")
+	}
+	if m.Timeout <= 0 {
+		m.Timeout = 10
+	}
+	return nil
 }

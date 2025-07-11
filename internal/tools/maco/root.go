@@ -94,7 +94,7 @@ func NewMacoCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	globalSet.StringP("config", "", configPath, "Set path to the configuration file.")
 
 	// Output Flags
-	globalSet.StringP("format", "F", "", "Set the format of output, etc text, json, yaml.")
+	globalSet.StringP("format", "F", "", "Set the format of output, etc glob, json, yaml.")
 	globalSet.StringP("output", "O", "", "Write the output to the specified file.")
 	globalSet.BoolP("output-append", "", false, "Append the output to the specified file.")
 	globalSet.BoolP("no-color", "", false, "Disable all colored output.")
@@ -267,12 +267,17 @@ func runMacoCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	callOptions := &types.CallOptions{
+		Format:  format,
+		Timeout: timeout,
+	}
+
 	ctx := cmd.Context()
 	in := &types.CallRequest{
-		Options:  selectionOptions,
-		Function: function,
-		Args:     arguments,
-		Timeout:  timeout,
+		SelectionOptions: selectionOptions,
+		Options:          callOptions,
+		Function:         function,
+		Args:             arguments,
 	}
 
 	out, err := mc.Call(ctx, in)

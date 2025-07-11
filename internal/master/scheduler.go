@@ -540,7 +540,9 @@ func (s *Scheduler) selectPipe(options *types.SelectionOptions) ([]*pipe, *TaskR
 
 func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Response, error) {
 
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(in.Timeout)*time.Second)
+	opts := in.Options
+	timeout := opts.Timeout
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	nextId := s.idAlloc.Get()
@@ -551,7 +553,7 @@ func (s *Scheduler) HandleCall(ctx context.Context, in *types.CallRequest) (*Res
 	if in.Options == nil {
 		return nil, apiErr.NewBadRequest("no selection options")
 	}
-	pipes, report, err := s.selectPipe(in.Options)
+	pipes, report, err := s.selectPipe(in.SelectionOptions)
 	if err != nil {
 		return nil, apiErr.NewBadRequest(err.Error())
 	}

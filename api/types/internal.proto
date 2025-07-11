@@ -139,17 +139,22 @@ message SelectionOptions {
   repeated Selection selections = 1;
 }
 
+message CallOptions {
+  string format = 1;
+  // 请求超时时长
+  int64 timeout = 2;
+}
+
 message CallRequest {
   // 筛选符合的 minions
-  SelectionOptions options = 1;
+  SelectionOptions selectionOptions = 1;
+  CallOptions options = 2;
   // 请求 id，确认请求唯一值
-  uint64 id = 2;
+  uint64 id = 3;
   // 请求方法，使用.分割，确认对应模块下的方法，如: a.b.c
-  string function = 3;
+  string function = 4;
   // 方法参数
-  repeated string args = 4;
-  // 请求超时时长
-  int64 timeout = 5;
+  repeated string args = 5;
 }
 
 message CallResponse {

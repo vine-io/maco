@@ -53,38 +53,41 @@ func (m *Minion) dispatch(dispatcher *client.Dispatcher) {
 				continue
 			}
 			in := &types.CallRequest{}
-			b, e1 := pemutil.DecodeByRSA(msg.Data, m.rsaPair.Private)
-			if e1 != nil {
-				event.Err = e1
+			b, cErr := pemutil.DecodeByRSA(msg.Data, m.rsaPair.Private)
+			if cErr != nil {
+				event.Err = cErr
 			} else {
-				e1 = msgpack.Unmarshal(b, in)
-				event.Err = e1
+				cErr = msgpack.Unmarshal(b, in)
+				event.Err = cErr
 			}
 
-			if e1 != nil {
-				reply := &types.CallResponse{
+			if cErr != nil {
+				rsp := &types.CallResponse{
 					Id:    msg.Id,
 					Type:  types.ResultType_ResultError,
-					Error: e1.Error(),
+					Error: cErr.Error(),
 				}
-				_ = dispatcher.Call(reply)
+				_ = dispatcher.Call(rsp)
 				continue
 			}
 
-			if in.Timeout == 0 {
-				in.Timeout = 10
-			}
-			rsp, e1 := runCmd(m.ctx, in)
-			if e1 != nil {
-
+			rsp, cErr := handleCall(m.ctx, in)
+			if cErr != nil {
+				
 			}
 			_ = dispatcher.Call(rsp)
 		}
 	}
 }
 
-func runCmd(ctx context.Context, in *types.CallRequest) (*types.CallResponse, error) {
-	timeout := time.Duration(in.Timeout) * time.Second
+func handleCall(ctx context.Context, in *types.CallRequest) (*types.CallResponse, error) {
+	timeout := 10 * time.Second
+	if in.Options != nil {
+		if in.Options.Timeout != 0 {
+			timeout = time.Duration(in.Options.Timeout) * time.Second
+		}
+	}
+
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

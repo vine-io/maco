@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: maco
     description: maco OpenAPI3.0 Document
-    version: 7d5ab5421f0c6cb1cdca229a4be945daf0294521
+    version: eaa5672a4135d310f88babf63e256ef72291d82b
 paths:
     /v1/call:
         post:
@@ -275,13 +275,23 @@ components:
                     type: array
                     items:
                         type: string
+        types.CallOptions:
+            type: object
+            properties:
+                format:
+                    type: string
+                timeout:
+                    type: string
+                    description: 请求超时时长
         types.CallRequest:
             type: object
             properties:
-                options:
+                selectionOptions:
                     allOf:
                         - $ref: '#/components/schemas/types.SelectionOptions'
                     description: 筛选符合的 minions
+                options:
+                    $ref: '#/components/schemas/types.CallOptions'
                 id:
                     type: string
                     description: 请求 id，确认请求唯一值
@@ -293,9 +303,6 @@ components:
                     items:
                         type: string
                     description: 方法参数
-                timeout:
-                    type: string
-                    description: 请求超时时长
         types.LogicAnd:
             type: object
             properties: {}

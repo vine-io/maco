@@ -94,7 +94,7 @@ func NewKeyCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 
 	globalSet := app.PersistentFlags()
 	globalSet.StringP("config", "C", configPath, "Set path to the configuration file.")
-	globalSet.StringP("format", "F", "", "Set the format of output, etc text, json, yaml.")
+	globalSet.StringP("format", "F", "", "Set the format of output, etc glob, json, yaml.")
 	globalSet.StringP("output", "O", "", "Write the output to the specified file.")
 	globalSet.BoolP("output-append", "", false, "Append the output to the specified file.")
 	globalSet.BoolP("no-color", "", false, "Disable all colored output.")
