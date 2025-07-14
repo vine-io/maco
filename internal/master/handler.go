@@ -27,6 +27,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -96,6 +97,14 @@ func registerRPCHandler(ctx context.Context, opt *options) (http.Handler, error)
 
 	serveMux := mux.NewRouter()
 	serveMux.Handle("/metrics", promhttp.Handler())
+
+	pprofMux := http.NewServeMux()
+	pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+	pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	serveMux.PathPrefix("/debug/pprof/").Handler(pprofMux)
 
 	serveMux.Handle("/v1/",
 		wsproxy.WebsocketProxy(
